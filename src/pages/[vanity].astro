@@ -2,11 +2,11 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import { getJacksonBusinesses } from '../lib/businesses';
+import { getWashingtonBusinesses } from '../lib/businesses';
 import { createClient } from '@supabase/supabase-js';
 
 export async function getStaticPaths() {
-  const businesses = await getJacksonBusinesses();
+  const businesses = await getWashingtonBusinesses();
   // Only generate paths for businesses that have a vanity_url set
   return businesses
     .filter((biz: any) => biz.vanity_url)

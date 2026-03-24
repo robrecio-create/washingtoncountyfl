@@ -3,10 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { categories, towns } from '../data/constants';
-import { getJacksonBusinesses } from '../lib/businesses';
+import { getWashingtonBusinesses } from '../lib/businesses';
 import { createClient } from '@supabase/supabase-js';
 
-const allBusinessData = await getJacksonBusinesses();
+const allBusinessData = await getWashingtonBusinesses();
 const businesses = allBusinessData.sort((a: any, b: any) => {
   // Elevated/SEO first, then Featured, then free
   const tierRank = (biz: any) => {

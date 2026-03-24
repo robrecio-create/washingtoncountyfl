@@ -3,10 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { towns, categories } from '../data/constants';
-import { getJacksonBusinesses } from '../lib/businesses';
+import { getWashingtonBusinesses } from '../lib/businesses';
 import eventsData from '../data/events.json';
 
-const businesses = await getJacksonBusinesses();
+const businesses = await getWashingtonBusinesses();
 const deals = businesses.filter(b => b.deal_title && b.deal_title.trim());
 const searchData = JSON.stringify(businesses.map(b => ({
   title: b.title,
