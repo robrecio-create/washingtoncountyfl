@@ -1,0 +1,40 @@
+export const towns = [
+  { name: 'Chipley', slug: 'chipley', businesses: 0 },
+  { name: 'Vernon', slug: 'vernon', businesses: 0 },
+  { name: 'Wausau', slug: 'wausau', businesses: 0 },
+  { name: 'Caryville', slug: 'caryville', businesses: 0 },
+  { name: 'Ebro', slug: 'ebro', businesses: 0 },
+  { name: 'Sunny Hills', slug: 'sunny-hills', businesses: 0 },
+];
+
+export const categories = [
+  { name: 'Restaurants & Dining', slug: 'restaurants-dining', icon: '🍽️', count: 0 },
+  { name: 'Shopping & Retail', slug: 'shopping-retail', icon: '🛍️', count: 0 },
+  { name: 'Health & Medical', slug: 'health-medical', icon: '🏥', count: 0 },
+  { name: 'Professional Services', slug: 'professional-services', icon: '💼', count: 0 },
+  { name: 'Financial Services', slug: 'financial-services', icon: '🏦', count: 0 },
+  { name: 'Home Services & Contractors', slug: 'home-services-contractors', icon: '🔧', count: 0 },
+  { name: 'Arts & Entertainment', slug: 'arts-entertainment', icon: '🎭', count: 0 },
+  { name: 'Auto Services', slug: 'auto-services', icon: '🚗', count: 0 },
+  { name: 'Beauty & Personal Care', slug: 'beauty-personal-care', icon: '💇', count: 0 },
+  { name: 'Real Estate', slug: 'real-estate', icon: '🏠', count: 0 },
+  { name: 'Outdoors & Recreation', slug: 'outdoors-recreation', icon: '🏖️', count: 0 },
+  { name: 'Bars & Nightlife', slug: 'bars-nightlife', icon: '🍸', count: 0 },
+  { name: 'Community Services & Nonprofits', slug: 'community-services-nonprofits', icon: '🤝', count: 0 },
+  { name: 'Churches & Religious', slug: 'churches-religious', icon: '⛪', count: 0 },
+  { name: 'Animal & Pet Services', slug: 'animal-pet-services', icon: '🐾', count: 0 },
+  { name: 'Education & Childcare', slug: 'education-childcare', icon: '📚', count: 0 },
+  { name: 'Accommodations', slug: 'accommodations', icon: '🏨', count: 0 },
+  { name: 'Appliances & Rentals', slug: 'appliances-rentals', icon: '🔌', count: 0 },
+];
+
+export const navLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Listings', href: '/listings/' },
+  { label: 'Categories', href: '/categories/' },
+  { label: 'Locations', href: '/locations/' },
+  { label: 'Events', href: '/events/' },
+  { label: 'Deals', href: '/deals/' },
+  { label: 'Pricing', href: '/pricing/' },
+  { label: 'Contact', href: '/contact/' },
+];

@@ -1,0 +1,564 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const plans = [
+  {
+    name: 'Verified Listing',
+    price: 'Free',
+    period: '',
+    annual: '',
+    description: 'Claim & verify your listing',
+    featured: false,
+    highlight: false,
+    badge: '',
+    cta: 'Get Started',
+    ctaLink: '/claim/',
+    features: [
+      { text: 'Business name, address & phone', included: true },
+      { text: 'Category & town placement', included: true },
+      { text: 'Add a logo or photo', included: true },
+      { text: 'Post coupons & deals', included: true },
+      { text: 'Link to your website', included: true },
+      { text: 'Verified owner badge', included: true },
+      { text: 'Short vanity URL', included: true },
+      { text: 'Multiple photos', included: false },
+      { text: 'Expanded description', included: false },
+      { text: 'Featured badge', included: false },
+      { text: 'Priority placement', included: false },
+    ],
+  },
+  {
+    name: 'Featured Listing',
+    price: '$29',
+    period: '/month',
+    annual: '2 months free with annual plan',
+    description: 'Stand out from the crowd',
+    featured: true,
+    highlight: true,
+    badge: 'Most Popular',
+    cta: 'Choose Plan',
+    ctaLink: '/contact/',
+    features: [
+      { text: 'Everything in Verified, plus:', included: true },
+      { text: 'Multiple photos on listing', included: true },
+      { text: 'Expanded services & description', included: true },
+      { text: 'Your listing as a mini-website', included: true },
+      { text: 'Featured badge in directory', included: true },
+      { text: 'Priority search placement', included: true },
+      { text: 'Video embed', included: true },
+      { text: 'Customer reviews', included: true },
+      { text: 'Up to 3 categories', included: true },
+    ],
+  },
+  {
+    name: 'Elevated Listing',
+    price: '$99',
+    period: '/month',
+    annual: '2 months free with annual plan',
+    description: 'Your own page on JacksonCountyMS.com',
+    featured: true,
+    highlight: false,
+    badge: 'Premium',
+    cta: 'Choose Plan',
+    ctaLink: '/contact/',
+    features: [
+      { text: 'Everything in Featured, plus:', included: true },
+      { text: 'Fully custom page with tabs & branding', included: true },
+      { text: 'Dedicated vanity URL', included: true },
+      { text: 'Visitor analytics & tracking', included: true },
+      { text: 'No related business links on page', included: true },
+      { text: 'Unlimited categories', included: true },
+      { text: 'Unlimited photos', included: true },
+      { text: 'Priority support', included: true },
+    ],
+  },
+  {
+    name: 'Full SEO Package',
+    price: 'From $500',
+    period: '/month',
+    annual: '2 months free with annual plan',
+    description: 'Dominate the local map pack',
+    featured: true,
+    highlight: false,
+    badge: '',
+    cta: 'Contact Us',
+    ctaLink: '/contact/',
+    features: [
+      { text: 'Everything in Elevated, plus:', included: true },
+      { text: 'Professional website redesign', included: true },
+      { text: 'Google Business Profile optimization', included: true },
+      { text: 'Quarterly highlight article with backlink', included: true },
+      { text: 'Local SEO strategy & reporting', included: true },
+      { text: 'Monthly performance reviews', included: true },
+    ],
+  },
+];
+---
+
+<Layout
+  title="Pricing — Jackson County MS"
+  description="List your Jackson County business for free or upgrade to a featured plan. Choose from Verified, Enhanced, or Elevated listing packages for maximum local visibility."
+>
+  <Header activePage="" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Pricing Plans</span>
+      <h1>Choose Your Listing Plan</h1>
+      <p>Get your business in front of Jackson County residents and visitors.</p>
+    </div>
+  </section>
+
+  <section class="pricing-section">
+    <div class="container">
+      <div class="pricing-grid">
+        {plans.map((plan: any) => (
+          <div class={`plan-card ${plan.highlight ? 'plan-highlight' : ''}`}>
+            {plan.badge && <span class="plan-badge">{plan.badge}</span>}
+            <h3>{plan.name}</h3>
+            <div class="plan-price">
+              <span class="price">{plan.price}</span>
+              {plan.period && <span class="period">{plan.period}</span>}
+            </div>
+            {plan.annual && <p class="plan-annual">{plan.annual}</p>}
+            <p class="plan-desc">{plan.description}</p>
+            <a href={plan.ctaLink} class={`btn ${plan.highlight ? 'btn-gold' : 'btn-outline'}`}>
+              {plan.cta}
+            </a>
+            <ul class="plan-features">
+              {plan.features.map((f: any) => (
+                <li class={f.included ? '' : 'not-included'}>
+                  <span class="check">{f.included ? '✓' : '—'}</span>
+                  {f.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <div class="compare-section">
+        <h2>Compare Plans</h2>
+        <div class="compare-table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Verified</th>
+                <th>Featured</th>
+                <th>Elevated</th>
+                <th>SEO Package</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Business name, address & phone</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Category & town placement</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Short business description</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Appear in search results</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Add a logo or photo</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Post coupons & deals</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Link to your website</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Verified owner badge</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Short vanity URL</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr class="divider"><td colspan="5"></td></tr>
+              <tr><td>Multiple photos on listing</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Expanded services & description</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Your listing as a mini-website</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Featured badge in directory</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Priority search placement</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Video embed</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Customer reviews</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr class="divider"><td colspan="5"></td></tr>
+              <tr><td>Fully custom page with tabs & branding</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Dedicated vanity URL</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Visitor analytics & tracking</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>No related business links on page</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Unlimited categories & photos</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><td>Priority support</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr class="divider"><td colspan="5"></td></tr>
+              <tr><td>Professional website redesign</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+              <tr><td>Google Business Profile optimization</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+              <tr><td>Quarterly highlight article with backlink</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+              <tr><td>Local SEO strategy & reporting</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+              <tr><td>Monthly performance reviews</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td><a href="/claim/" class="btn btn-outline btn-sm">Get Started</a></td>
+                <td><a href="/contact/" class="btn btn-gold btn-sm">Choose Plan</a></td>
+                <td><a href="/contact/" class="btn btn-outline btn-sm">Choose Plan</a></td>
+                <td><a href="/contact/" class="btn btn-outline btn-sm">Contact Us</a></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-grid">
+          <div class="faq-item">
+            <h4>How do I claim my listing?</h4>
+            <p>Find your business on our site, click "Claim This Listing," and verify your ownership. Once approved, you can update your info, add photos, and post deals — all for free.</p>
+          </div>
+          <div class="faq-item">
+            <h4>Can I post deals with the free Verified listing?</h4>
+            <p>Yes! Every verified listing can post coupons and deals to attract customers. Upgrade to Featured for even more visibility and features.</p>
+          </div>
+          <div class="faq-item">
+            <h4>What's included in the annual plan?</h4>
+            <p>All paid plans offer an annual option with 2 months free. That's 12 months of service for the price of 10. Cancel anytime.</p>
+          </div>
+          <div class="faq-item">
+            <h4>What is an Elevated listing?</h4>
+            <p>Elevated listings get a fully custom branded page on our site with visitor analytics, dedicated vanity URL, and no competing business links on your page.</p>
+          </div>
+          <div class="faq-item">
+            <h4>What does the SEO Package include?</h4>
+            <p>Our Full SEO Package includes professional website redesign, Google Business Profile optimization, quarterly highlight articles, and ongoing local SEO strategy.</p>
+          </div>
+          <div class="faq-item">
+            <h4>Can I upgrade or cancel anytime?</h4>
+            <p>Start free and upgrade whenever you're ready. Monthly plans can be canceled at any time — your listing reverts to the free tier at the end of your billing period.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .pricing-section {
+    padding: 4rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 5rem;
+  }
+
+  .plan-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .plan-highlight {
+    border-color: var(--gold);
+    box-shadow: 0 4px 30px rgba(232,160,32,0.15);
+    transform: scale(1.03);
+    z-index: 1;
+  }
+
+  .plan-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--white);
+    background: var(--gold);
+    padding: 0.3rem 1rem;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+
+  .plan-card h3 {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    color: var(--navy);
+    margin-bottom: 0.75rem;
+  }
+
+  .plan-price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.15rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .price {
+    font-family: var(--font-heading);
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .period {
+    font-size: 0.95rem;
+    color: var(--gray-600);
+    font-weight: 400;
+  }
+
+  .plan-annual {
+    font-size: 0.78rem;
+    color: var(--teal);
+    font-weight: 600;
+    margin-top: -0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .plan-desc {
+    font-size: 0.88rem;
+    color: var(--gray-600);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.85rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+    margin-bottom: 2rem;
+  }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(232,160,32,0.35);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--navy);
+    border-color: var(--gray-200);
+  }
+
+  .btn-outline:hover {
+    border-color: var(--teal);
+    color: var(--teal);
+    transform: translateY(-1px);
+  }
+
+  .plan-features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .plan-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    color: var(--gray-800);
+    line-height: 1.4;
+  }
+
+  .plan-features li.not-included {
+    color: var(--gray-400);
+  }
+
+  .check {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--teal);
+    margin-top: 0.05rem;
+  }
+
+  .not-included .check {
+    color: var(--gray-400);
+  }
+
+  /* ── Compare Plans Table ── */
+  .compare-section {
+    margin-bottom: 5rem;
+  }
+
+  .compare-section h2 {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    color: var(--navy);
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .compare-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+    min-width: 700px;
+  }
+
+  .compare-table thead th {
+    background: var(--navy);
+    color: var(--white);
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1rem 1.25rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .compare-table thead th:first-child {
+    text-align: left;
+    width: 40%;
+  }
+
+  .compare-table tbody td {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.88rem;
+    color: var(--gray-700);
+    text-align: center;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .compare-table tbody td:first-child {
+    text-align: left;
+    font-weight: 500;
+    color: var(--gray-800);
+  }
+
+  .compare-table tbody tr:hover {
+    background: var(--gray-50, #f9fafb);
+  }
+
+  .compare-table td.yes {
+    color: var(--teal);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .compare-table td.no {
+    color: var(--gray-300);
+    font-size: 1rem;
+  }
+
+  .compare-table tr.divider td {
+    padding: 0;
+    height: 3px;
+    background: var(--gray-100);
+    border: none;
+  }
+
+  .compare-table tfoot td {
+    padding: 1.25rem;
+    background: var(--gray-50, #f9fafb);
+    border-top: 2px solid var(--gray-200);
+  }
+
+  .btn-sm {
+    padding: 0.55rem 1.2rem;
+    font-size: 0.8rem;
+    width: auto;
+    display: inline-flex;
+    margin-bottom: 0;
+  }
+
+  .faq-section h2 {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    color: var(--navy);
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .faq-item {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+  }
+
+  .faq-item h4 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+
+  .faq-item p {
+    font-size: 0.88rem;
+    color: var(--gray-600);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 1100px) {
+    .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 650px) {
+    .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .plan-highlight { transform: none; }
+    .faq-grid { grid-template-columns: 1fr; }
+  }
+</style>

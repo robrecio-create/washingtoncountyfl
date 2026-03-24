@@ -1,0 +1,1153 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { getJacksonBusinesses } from '../../lib/businesses';
+import { createClient } from '@supabase/supabase-js';
+
+export async function getStaticPaths() {
+  const businesses = await getJacksonBusinesses();
+  return businesses.map(biz => ({
+    params: { slug: biz.slug },
+    props: { business: biz, allBusinesses: businesses },
+  }));
+}
+
+const { business, allBusinesses } = Astro.props;
+const biz = business as any;
+const COUNTY = 'jackson';
+
+// Supabase client for build-time queries
+let photos: any[] = [];
+let reviews: any[] = [];
+let isVerified = false;
+let sbBizData: any = null;
+
+const supabaseUrl = import.meta.env.SUPABASE_URL;
+const supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (supabaseUrl && supabaseKey) {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Look up business UUID by county + slug
+    const { data: sbBiz } = await supabase
+      .from('businesses')
+      .select('id, services, video_url, listing_tier, banner_image_url, logo_url, facebook_url, instagram_url, twitter_url, linkedin_url, tiktok_url, youtube_url, business_hours, cta_1_label, cta_1_url, cta_2_label, cta_2_url')
+      .eq('county', COUNTY)
+      .eq('slug', biz.slug)
+      .single();
+
+    if (sbBiz) {
+      sbBizData = sbBiz;
+
+      // Fetch photos
+      const { data: photoData } = await supabase
+        .from('business_photos')
+        .select('*')
+        .eq('business_id', sbBiz.id)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true });
+      if (photoData) photos = photoData;
+
+      // Fetch approved reviews (featured only)
+      if (biz.featured) {
+        const { data: reviewData } = await supabase
+          .from('business_reviews')
+          .select('*')
+          .eq('business_id', sbBiz.id)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
+        if (reviewData) reviews = reviewData;
+      }
+
+      // Check if business is claimed/verified
+      const { data: claimData } = await supabase
+        .from('business_claims')
+        .select('id')
+        .eq('business_id', sbBiz.id)
+        .eq('status', 'approved')
+        .limit(1);
+      if (claimData && claimData.length > 0) isVerified = true;
+    }
+  } catch (e) {
+    // Silently fail — all features are optional
+  }
+}
+
+const primaryPhoto = photos.find((p: any) => p.is_primary) || photos[0];
+const otherPhotos = photos.filter((p: any) => p !== primaryPhoto);
+
+// Parse services from Supabase (newline-separated)
+const services = (sbBizData?.services || '').split('\n').map((s: string) => s.trim()).filter(Boolean);
+
+// Parse video embed URL
+const videoUrl = sbBizData?.video_url || '';
+let videoEmbedUrl = '';
+if (videoUrl) {
+  const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+  if (ytMatch) videoEmbedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+  else if (vimeoMatch) videoEmbedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+}
+
+// Average rating
+const avgRating = reviews.length > 0
+  ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+  : 0;
+
+// Related businesses
+const related = (allBusinesses as any[])
+  .filter(b =>
+    b.slug !== biz.slug &&
+    (b.categories?.[0] === biz.categories?.[0] || b.location?.[0] === biz.location?.[0])
+  )
+  .slice(0, 3);
+
+// Tier config
+const isFeatured = biz.featured === true;
+const listingTier = sbBizData?.listing_tier || (isFeatured ? 'featured' : 'free');
+const isElevated = listingTier === 'elevated' || listingTier === 'seo';
+
+// Elevated premium fields
+const bannerUrl = sbBizData?.banner_image_url || '';
+const logoUrl = sbBizData?.logo_url || '';
+const socialLinks = [
+  { name: 'Facebook', url: sbBizData?.facebook_url, icon: 'fb' },
+  { name: 'Instagram', url: sbBizData?.instagram_url, icon: 'ig' },
+  { name: 'Twitter', url: sbBizData?.twitter_url, icon: 'tw' },
+  { name: 'LinkedIn', url: sbBizData?.linkedin_url, icon: 'li' },
+  { name: 'TikTok', url: sbBizData?.tiktok_url, icon: 'tt' },
+  { name: 'YouTube', url: sbBizData?.youtube_url, icon: 'yt' },
+].filter(s => s.url);
+const businessHours = sbBizData?.business_hours || null;
+const cta1 = sbBizData?.cta_1_label && sbBizData?.cta_1_url ? { label: sbBizData.cta_1_label, url: sbBizData.cta_1_url } : null;
+const cta2 = sbBizData?.cta_2_label && sbBizData?.cta_2_url ? { label: sbBizData.cta_2_label, url: sbBizData.cta_2_url } : null;
+
+// Tab config for featured businesses
+const hasDeal = !!biz.deal_title;
+const hasServices = services.length > 0;
+const hasGallery = photos.length > 0 || !!videoEmbedUrl;
+
+// SEO description: use excerpt, or first 155 chars of content, or fallback
+const rawDesc = biz.excerpt || biz.content || '';
+const seoDescription = rawDesc.length > 155
+  ? rawDesc.slice(0, 152).trimEnd() + '...'
+  : rawDesc || `${biz.title} is a local business in ${biz.location?.[0] || 'Jackson County'}, Mississippi. Find contact info, hours, and more.`;
+---
+
+<Layout
+  title={`${biz.title} — Jackson County MS`}
+  description={seoDescription}
+  ogImage={primaryPhoto?.url || undefined}
+>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": biz.title,
+    "description": seoDescription,
+    "address": biz.address ? {
+      "@type": "PostalAddress",
+      "streetAddress": biz.address,
+      "addressLocality": biz.location?.[0] || "Jackson County",
+      "addressRegion": "MS",
+      "addressCountry": "US"
+    } : undefined,
+    "telephone": biz.phone || undefined,
+    "email": biz.email || undefined,
+    "url": biz.website || `https://www.jacksoncountyms.com/listing/${biz.slug}/`,
+    "image": primaryPhoto?.url || undefined,
+    "geo": (biz.latitude && biz.longitude) ? {
+      "@type": "GeoCoordinates",
+      "latitude": biz.latitude,
+      "longitude": biz.longitude
+    } : undefined,
+    ...(avgRating > 0 ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": avgRating.toFixed(1),
+        "reviewCount": reviews.length
+      }
+    } : {})
+  })} />
+
+  <Header activePage="Listings" />
+
+  <section class={`page-hero ${isElevated && bannerUrl ? 'hero-elevated' : ''}`} style={isElevated && bannerUrl ? `background-image: url(${bannerUrl})` : ''}>
+    {isElevated && bannerUrl && <div class="hero-overlay"></div>}
+    <div class="container hero-content">
+      <a href="/listings/" class="back-link">&larr; All Listings</a>
+      <div class="biz-header">
+        {isElevated && logoUrl && (
+          <img src={logoUrl} alt={`${biz.title} logo`} class="biz-logo" width="80" height="80" />
+        )}
+        <div>
+          <h1>{biz.title}</h1>
+          <div class="biz-badges">
+            {isElevated && <span class="badge badge-elevated">★ Premium Listing</span>}
+            {biz.featured && !isElevated && <span class="badge badge-featured">Featured</span>}
+            {isVerified && <span class="badge badge-verified">&#10003; Verified</span>}
+            {biz.tags?.includes('locally-owned') && <span class="badge badge-local">Locally Owned</span>}
+            {avgRating > 0 && (
+              <span class="badge badge-rating">
+                {'★'.repeat(Math.round(avgRating))}{'☆'.repeat(5 - Math.round(avgRating))}
+                <span class="rating-count">({reviews.length})</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div class="biz-quick-info">
+        {biz.categories?.[0] && (
+          <a href={`/categories/${biz.categories[0].toLowerCase().replace(/[&\s]+/g, '-').replace(/--+/g, '-')}/`} class="quick-tag">
+            {biz.categories[0]}
+          </a>
+        )}
+        {biz.location?.[0] && (
+          <a href={`/locations/${biz.location[0].toLowerCase().replace(/\s+/g, '-')}/`} class="quick-tag">
+            📍 {biz.location[0]}
+          </a>
+        )}
+      </div>
+      {isElevated && (cta1 || cta2) && (
+        <div class="hero-ctas">
+          {cta1 && <a href={cta1.url} target="_blank" rel="noopener noreferrer" class="btn btn-cta-primary">{cta1.label}</a>}
+          {cta2 && <a href={cta2.url} target="_blank" rel="noopener noreferrer" class="btn btn-cta-secondary">{cta2.label}</a>}
+        </div>
+      )}
+    </div>
+  </section>
+
+  {/* Non-featured: photo grid (build-time + client-side refresh) */}
+  <section class="biz-gallery-section" id="photo-gallery" data-slug={biz.slug} data-title={biz.title} style={!isFeatured && photos.length > 0 ? '' : (!isFeatured ? 'display:none' : 'display:none')}>
+    <div class="container">
+      <h3 class="gallery-heading">Photos</h3>
+      <div class="biz-photo-grid" id="photo-gallery-inner">
+        {photos.map((photo: any) => (
+          <img src={photo.url} alt={photo.alt_text || biz.title} loading="lazy" class="biz-photo-grid-img" data-lightbox />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="biz-content">
+    <div class="container">
+      <div class="biz-layout">
+        <div class="biz-main">
+
+          {/* ── FEATURED: Tabbed Mini-Website ── */}
+          {isFeatured ? (
+            <div class="mini-website">
+              <div class="tab-bar" id="tab-bar">
+                <button class="tab-btn active" data-tab="about">About</button>
+                {hasServices && <button class="tab-btn" data-tab="services">Services</button>}
+                {hasGallery && <button class="tab-btn" data-tab="gallery">Gallery</button>}
+                {hasDeal && <button class="tab-btn" data-tab="deals">Deals</button>}
+                <button class="tab-btn" data-tab="reviews">Reviews{reviews.length > 0 ? ` (${reviews.length})` : ''}</button>
+              </div>
+
+              {/* About Tab */}
+              <div class="tab-panel active" id="tab-about">
+                <div class="biz-description">
+                  {biz.content && <p>{biz.content}</p>}
+                  {!biz.content && <p class="text-gray">No description available yet.</p>}
+                </div>
+              </div>
+
+              {/* Services Tab */}
+              {hasServices && (
+                <div class="tab-panel" id="tab-services">
+                  <ul class="services-list">
+                    {services.map((s: string) => (
+                      <li>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Gallery Tab */}
+              {hasGallery && (
+                <div class="tab-panel" id="tab-gallery">
+                  {isElevated && photos.length > 1 ? (
+                    <div class="photo-carousel" id="photo-carousel">
+                      <div class="carousel-track" id="carousel-track">
+                        {photos.map((photo: any) => (
+                          <img src={photo.url} alt={photo.alt_text || biz.title} loading="lazy" data-lightbox />
+                        ))}
+                      </div>
+                      <button class="carousel-btn carousel-prev" id="carousel-prev" aria-label="Previous photo">&#8249;</button>
+                      <button class="carousel-btn carousel-next" id="carousel-next" aria-label="Next photo">&#8250;</button>
+                      <div class="carousel-dots" id="carousel-dots">
+                        {photos.map((_: any, i: number) => (
+                          <button class={`carousel-dot ${i === 0 ? 'active' : ''}`} data-idx={i} aria-label={`Photo ${i + 1}`}></button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div class="tab-gallery-grid" id="featured-photo-grid">
+                      {photos.map((photo: any) => (
+                        <img src={photo.url} alt={photo.alt_text || biz.title} loading="lazy" class="tab-gallery-img" data-lightbox />
+                      ))}
+                    </div>
+                  )}
+                  {videoEmbedUrl && (
+                    <div class="video-embed">
+                      <iframe src={videoEmbedUrl} title={`${biz.title} video`} frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Deals Tab */}
+              {hasDeal && (
+                <div class="tab-panel" id="tab-deals">
+                  {isElevated ? (
+                    <div class="deal-box-elevated">
+                      <h3>🎟️ {biz.deal_title}</h3>
+                      {biz.deal_description && <p>{biz.deal_description}</p>}
+                      {biz.deal_expiry && (
+                        <div class="deal-countdown" id="deal-countdown" data-expiry={biz.deal_expiry}></div>
+                      )}
+                      {biz.deal_expiry && <span class="deal-expiry">Expires: {biz.deal_expiry}</span>}
+                    </div>
+                  ) : (
+                    <div class="deal-box">
+                      <h3>{biz.deal_title}</h3>
+                      {biz.deal_description && <p>{biz.deal_description}</p>}
+                      {biz.deal_expiry && <span class="deal-expiry">Expires: {biz.deal_expiry}</span>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Reviews Tab */}
+              <div class="tab-panel" id="tab-reviews">
+                {reviews.length > 0 ? (
+                  <div class="reviews-list">
+                    {reviews.map((r: any) => (
+                      <div class="review-card">
+                        <div class="review-header">
+                          <span class="review-stars">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                          <span class="review-author">{r.reviewer_name}</span>
+                          <span class="review-date">{new Date(r.created_at).toLocaleDateString()}</span>
+                        </div>
+                        {r.review_text && <p class="review-text">{r.review_text}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="no-reviews">No reviews yet. Be the first!</p>
+                )}
+                <div class="review-form-section">
+                  <h4>Leave a Review</h4>
+                  <form id="review-form" class="review-form">
+                    <input type="hidden" id="review-slug" value={biz.slug} />
+                    <div class="form-row">
+                      <div>
+                        <label for="reviewer-name">Your Name *</label>
+                        <input type="text" id="reviewer-name" required />
+                      </div>
+                      <div>
+                        <label for="review-rating">Rating *</label>
+                        <select id="review-rating" required>
+                          <option value="">Select...</option>
+                          <option value="5">★★★★★ (5)</option>
+                          <option value="4">★★★★☆ (4)</option>
+                          <option value="3">★★★☆☆ (3)</option>
+                          <option value="2">★★☆☆☆ (2)</option>
+                          <option value="1">★☆☆☆☆ (1)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label for="review-text">Your Review</label>
+                      <textarea id="review-text" rows="3" placeholder="Share your experience..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-teal" id="review-submit">Submit Review</button>
+                    <p class="review-note">Reviews are moderated and will appear after approval.</p>
+                    <div id="review-message" class="review-message"></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── NON-FEATURED: Simple layout ── */
+            <>
+              {biz.content && (
+                <div class="biz-description">
+                  <h2>About</h2>
+                  <p>{biz.content}</p>
+                </div>
+              )}
+
+              {biz.deal_title && (
+                <div class="deal-section">
+                  <div class="deal-header">
+                    <span class="deal-icon">🎟️</span>
+                    <h2>Current Deal</h2>
+                  </div>
+                  <div class="deal-box">
+                    <h3>{biz.deal_title}</h3>
+                    {biz.deal_description && <p>{biz.deal_description}</p>}
+                    {biz.deal_expiry && <span class="deal-expiry">Expires: {biz.deal_expiry}</span>}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {related.length > 0 && !isElevated && (
+            <div class="related-section">
+              <h2>Related Businesses</h2>
+              <div class="related-grid">
+                {related.map((r: any) => (
+                  <a href={`/listing/${r.slug}/`} class="related-card">
+                    <h4>{r.title}</h4>
+                    <div class="related-meta">
+                      {r.categories?.[0] && <span>{r.categories[0]}</span>}
+                      {r.location?.[0] && <span>📍 {r.location[0]}</span>}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <aside class="biz-sidebar">
+          <div class="sidebar-card">
+            <h3>Contact & Location</h3>
+            {biz.address && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">📍</span>
+                <div><strong>Address</strong><p>{biz.address}</p></div>
+              </div>
+            )}
+            {biz.phone && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">📞</span>
+                <div><strong>Phone</strong><p><a href={`tel:${biz.phone.replace(/[^\d+]/g, '')}`}>{biz.phone}</a></p></div>
+              </div>
+            )}
+            {biz.email && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">✉️</span>
+                <div><strong>Email</strong><p><a href={`mailto:${biz.email}`}>{biz.email}</a></p></div>
+              </div>
+            )}
+            {biz.website && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">🌐</span>
+                <div><strong>Website</strong><p><a href={biz.website} target="_blank" rel="noopener noreferrer">{biz.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</a></p></div>
+              </div>
+            )}
+            {biz.address && (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(biz.address)}`} target="_blank" rel="noopener noreferrer" class="btn btn-teal">Get Directions &rarr;</a>
+            )}
+
+            {/* Social Media Links — Elevated only */}
+            {isElevated && socialLinks.length > 0 && (
+              <div class="social-links">
+                {socialLinks.map(s => (
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" class={`social-icon social-${s.icon}`} aria-label={s.name} title={s.name}>
+                    {s.icon === 'fb' && <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>}
+                    {s.icon === 'ig' && <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>}
+                    {s.icon === 'tw' && <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>}
+                    {s.icon === 'li' && <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>}
+                    {s.icon === 'tt' && <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>}
+                    {s.icon === 'yt' && <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Business Hours — Elevated only */}
+            {isElevated && businessHours && (
+              <div class="hours-section">
+                <h4>Business Hours</h4>
+                <div class="hours-table" id="hours-table">
+                  {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => {
+                    const label = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' }[day];
+                    const h = (businessHours as any)[day];
+                    return (
+                      <div class="hours-row" data-day={day}>
+                        <span class="hours-day">{label}</span>
+                        <span class="hours-time">{h?.closed ? 'Closed' : h?.open && h?.close ? `${h.open} – ${h.close}` : '—'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div class="open-status" id="open-status"></div>
+              </div>
+            )}
+
+            <div class="claim-divider"></div>
+            {isVerified ? (
+              <div class="claim-block claimed">
+                <span class="claim-icon">✅</span>
+                <strong>Verified Business</strong>
+                <p>This listing has been claimed and verified by the business owner.</p>
+                <a href="https://gulfcoast-directory-admin.vercel.app/login" target="_blank" rel="noopener" class="manage-link">Manage your listing &rarr;</a>
+              </div>
+            ) : (
+              <div class="claim-block">
+                <span class="claim-icon">🏢</span>
+                <strong>Own this business?</strong>
+                <p>Claim this listing to update your info, add photos, post deals, and connect with customers.</p>
+                <a href={`/claim/${biz.slug}/`} class="btn btn-gold">Claim This Listing</a>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 8rem 0 3rem; }
+  .back-link { display: inline-block; color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 1.25rem; transition: color 0.2s; }
+  .back-link:hover { color: var(--white); }
+  .biz-header h1 { font-family: var(--font-heading); font-size: clamp(1.8rem, 4vw, 2.6rem); color: var(--white); margin-bottom: 0.5rem; }
+  .biz-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 0.25rem 0.75rem; border-radius: 100px; }
+  .badge-elevated { color: #a78bfa; background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.3); }
+  .badge-featured { color: var(--gold); background: rgba(232,160,32,0.15); border: 1px solid rgba(232,160,32,0.3); }
+  .badge-verified { color: #34d399; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-local { color: var(--teal-light); background: rgba(26,127,122,0.15); border: 1px solid rgba(26,127,122,0.3); }
+  .badge-rating { color: #fbbf24; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3); letter-spacing: 0; text-transform: none; }
+  .rating-count { color: rgba(255,255,255,0.6); font-size: 0.6rem; margin-left: 0.25rem; }
+  .biz-quick-info { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .quick-tag { font-size: 0.82rem; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 0.3rem 0.8rem; border-radius: 100px; transition: background 0.2s; }
+  .quick-tag:hover { background: rgba(255,255,255,0.18); }
+  .biz-content { padding: 3rem 0 5rem; background: var(--gray-100); }
+  .biz-layout { display: grid; grid-template-columns: 1fr 340px; gap: 2.5rem; align-items: flex-start; }
+  .biz-main { display: flex; flex-direction: column; gap: 2.5rem; }
+
+  /* Mini-Website Tabs */
+  .mini-website { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; }
+  .tab-bar { display: flex; border-bottom: 2px solid var(--gray-200); overflow-x: auto; background: var(--gray-50, #f9fafb); }
+  .tab-btn { padding: 0.85rem 1.5rem; font-size: 0.88rem; font-weight: 600; color: var(--gray-500); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: color 0.2s, border-color 0.2s; }
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .tab-panel { display: none; padding: 2rem; }
+  .tab-panel.active { display: block; }
+  .tab-panel .biz-description p { color: var(--gray-600); line-height: 1.8; }
+  .text-gray { color: var(--gray-400); font-style: italic; }
+
+  /* Services */
+  .services-list { list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .services-list li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.92rem; color: var(--gray-700); padding: 0.5rem 0; }
+  .services-list li::before { content: '✓'; color: var(--teal); font-weight: 700; flex-shrink: 0; }
+
+  /* Tab Gallery */
+  .tab-gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+  .tab-gallery-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; transition: transform 0.2s; }
+  .tab-gallery-img:hover { transform: scale(1.03); }
+
+  /* Video Embed */
+  .video-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--radius-md); }
+  .video-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: var(--radius-md); }
+
+  /* Reviews */
+  .reviews-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+  .review-card { padding: 1.25rem; background: var(--gray-50, #f9fafb); border: 1px solid var(--gray-200); border-radius: var(--radius-md); }
+  .review-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  .review-stars { color: #fbbf24; font-size: 0.95rem; letter-spacing: 1px; }
+  .review-author { font-weight: 600; font-size: 0.88rem; color: var(--navy); }
+  .review-date { font-size: 0.78rem; color: var(--gray-400); }
+  .review-text { color: var(--gray-600); font-size: 0.9rem; line-height: 1.6; margin: 0; }
+  .no-reviews { color: var(--gray-400); font-style: italic; margin-bottom: 2rem; }
+  .review-form-section { border-top: 1px solid var(--gray-200); padding-top: 1.5rem; }
+  .review-form-section h4 { font-family: var(--font-heading); font-size: 1.1rem; color: var(--navy); margin-bottom: 1rem; }
+  .review-form { display: flex; flex-direction: column; gap: 0.75rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .review-form label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--gray-600); margin-bottom: 0.25rem; }
+  .review-form input, .review-form select, .review-form textarea { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.88rem; color: var(--gray-800); outline: none; transition: border-color 0.2s; }
+  .review-form input:focus, .review-form select:focus, .review-form textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,127,122,0.1); }
+  .review-note { font-size: 0.75rem; color: var(--gray-400); margin: 0; }
+  .review-message { font-size: 0.88rem; font-weight: 500; padding: 0.5rem 0; }
+  .review-message.success { color: var(--teal); }
+  .review-message.error { color: #ef4444; }
+
+  /* Non-featured sections */
+  .biz-description { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 2rem; }
+  .biz-description h2 { font-family: var(--font-heading); font-size: 1.3rem; color: var(--navy); margin-bottom: 0.75rem; }
+  .biz-description p { color: var(--gray-600); line-height: 1.8; }
+  .deal-section { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 2rem; }
+  .deal-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+  .deal-icon { font-size: 1.4rem; }
+  .deal-header h2 { font-family: var(--font-heading); font-size: 1.3rem; color: var(--navy); }
+  .deal-box { background: rgba(232,160,32,0.06); border: 1px solid rgba(232,160,32,0.2); border-radius: var(--radius-md); padding: 1.5rem; }
+  .deal-box h3 { font-family: var(--font-heading); font-size: 1.15rem; color: var(--navy); margin-bottom: 0.4rem; }
+  .deal-box p { color: var(--gray-600); font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .deal-expiry { font-size: 0.8rem; color: var(--gray-400); }
+  .related-section h2 { font-family: var(--font-heading); font-size: 1.3rem; color: var(--navy); margin-bottom: 1rem; }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .related-card { padding: 1.25rem; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-md); transition: all 0.25s; }
+  .related-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .related-card h4 { font-family: var(--font-heading); font-size: 0.95rem; color: var(--navy); margin-bottom: 0.4rem; }
+  .related-meta { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.78rem; color: var(--gray-600); }
+
+  /* Sidebar */
+  .sidebar-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 2rem; position: sticky; top: 90px; }
+  .sidebar-card h3 { font-family: var(--font-heading); font-size: 1.15rem; color: var(--navy); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--gray-200); }
+  .sidebar-item { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; }
+  .sidebar-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .sidebar-item strong { display: block; font-size: 0.8rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.1rem; }
+  .sidebar-item p { font-size: 0.9rem; color: var(--navy); margin: 0; line-height: 1.4; word-break: break-word; }
+  .sidebar-item a { color: var(--teal); transition: color 0.2s; }
+  .sidebar-item a:hover { color: var(--teal-light); text-decoration: underline; }
+  .claim-divider { border-top: 1px solid var(--gray-200); margin: 1.25rem 0; }
+  .claim-block { text-align: center; }
+  .claim-icon { font-size: 1.75rem; display: block; margin-bottom: 0.5rem; }
+  .claim-block strong { display: block; font-family: var(--font-heading); font-size: 1rem; color: var(--navy); margin-bottom: 0.35rem; }
+  .claim-block p { color: var(--gray-600); font-size: 0.82rem; line-height: 1.5; margin: 0 0 1rem; }
+  .manage-link { display: inline-block; color: var(--teal); font-size: 0.82rem; font-weight: 600; text-decoration: none; transition: color 0.2s; }
+  .manage-link:hover { color: var(--teal-light); text-decoration: underline; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 0.8rem 1.6rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-md); border: 2px solid transparent; transition: all 0.25s; margin-top: 0.5rem; cursor: pointer; }
+  .btn-teal { background: var(--teal); color: var(--white); border-color: var(--teal); }
+  .btn-teal:hover { background: var(--teal-light); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+  .btn-gold { background: var(--gold); color: var(--navy); border-color: var(--gold); margin-top: 0; }
+  .btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,160,32,0.35); }
+
+  /* Photo Gallery (non-featured) */
+  .biz-gallery-section { padding: 1.5rem 0; }
+  .gallery-heading { font-size: 1.1rem; font-weight: 600; color: var(--navy); margin-bottom: 0.75rem; }
+  .biz-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+  .biz-photo-grid-img { width: 100%; height: 180px; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid var(--gray-200); }
+  .biz-photo-grid-img:hover { transform: scale(1.03); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+  /* Lightbox */
+  .lightbox-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 1rem; cursor: pointer; }
+  .lightbox-overlay img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: var(--radius-md); cursor: default; }
+  .lightbox-close { position: absolute; top: 1rem; right: 1.5rem; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; line-height: 1; padding: 0.5rem; opacity: 0.8; transition: opacity 0.2s; }
+  .lightbox-close:hover { opacity: 1; }
+  .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); color: white; font-size: 2.5rem; cursor: pointer; background: rgba(0,0,0,0.3); border: none; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.2s; }
+  .lightbox-nav:hover { opacity: 1; }
+  .lightbox-prev { left: 1rem; }
+  .lightbox-next { right: 1rem; }
+
+  /* ── ELEVATED PREMIUM STYLES ── */
+  .hero-elevated {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    padding: 10rem 0 3.5rem;
+  }
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.85) 100%);
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .biz-header { display: flex; align-items: center; gap: 1.25rem; }
+  .biz-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    object-fit: cover;
+    border: 3px solid rgba(255,255,255,0.3);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+    background: white;
+  }
+  .hero-ctas {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+  .btn-cta-primary {
+    background: var(--gold);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.85rem 2rem;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--gold);
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: auto;
+  }
+  .btn-cta-primary:hover {
+    background: var(--gold-light);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(232,160,32,0.4);
+  }
+  .btn-cta-secondary {
+    background: rgba(255,255,255,0.15);
+    color: var(--white);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.85rem 2rem;
+    border-radius: var(--radius-md);
+    border: 2px solid rgba(255,255,255,0.3);
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    backdrop-filter: blur(4px);
+    width: auto;
+  }
+  .btn-cta-secondary:hover {
+    background: rgba(255,255,255,0.25);
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.5);
+  }
+
+  /* Social Media Icons */
+  .social-links {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 1rem 0 0.5rem;
+    flex-wrap: wrap;
+  }
+  .social-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+    color: white;
+  }
+  .social-icon svg { width: 18px; height: 18px; }
+  .social-fb { background: #1877f2; }
+  .social-fb:hover { background: #0d65d9; transform: translateY(-2px); }
+  .social-ig { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+  .social-ig:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(225,48,108,0.4); }
+  .social-tw { background: #000; }
+  .social-tw:hover { background: #333; transform: translateY(-2px); }
+  .social-li { background: #0a66c2; }
+  .social-li:hover { background: #084f94; transform: translateY(-2px); }
+  .social-tt { background: #000; }
+  .social-tt:hover { background: #333; transform: translateY(-2px); }
+  .social-yt { background: #ff0000; }
+  .social-yt:hover { background: #cc0000; transform: translateY(-2px); }
+
+  /* Business Hours */
+  .hours-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-200);
+  }
+  .hours-section h4 {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    color: var(--navy);
+    margin-bottom: 0.75rem;
+  }
+  .hours-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .hours-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 0.3rem 0;
+  }
+  .hours-row.today {
+    font-weight: 700;
+    color: var(--teal);
+  }
+  .hours-day {
+    color: var(--gray-600);
+    font-weight: 500;
+  }
+  .hours-time {
+    color: var(--navy);
+  }
+  .open-status {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.4rem 0.75rem;
+    border-radius: 100px;
+  }
+  .open-status.is-open {
+    color: #059669;
+    background: rgba(5,150,105,0.1);
+  }
+  .open-status.is-closed {
+    color: #dc2626;
+    background: rgba(220,38,38,0.1);
+  }
+
+  /* Enhanced Deal (Elevated) */
+  .deal-box-elevated {
+    background: linear-gradient(135deg, #fffef5 0%, #fff4cc 100%);
+    border: 2px solid var(--gold);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .deal-box-elevated::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--gold), #d4940a, var(--gold));
+  }
+  .deal-box-elevated h3 {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+  .deal-box-elevated p {
+    color: var(--gray-600);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .deal-countdown {
+    display: inline-flex;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .countdown-unit {
+    text-align: center;
+  }
+  .countdown-num {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .countdown-label {
+    font-size: 0.65rem;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Photo Carousel (Elevated) */
+  .photo-carousel {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+  }
+  .carousel-track {
+    display: flex;
+    transition: transform 0.5s ease;
+  }
+  .carousel-track img {
+    width: 100%;
+    flex-shrink: 0;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+  .carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 2;
+  }
+  .carousel-btn:hover { background: rgba(0,0,0,0.7); }
+  .carousel-prev { left: 0.75rem; }
+  .carousel-next { right: 0.75rem; }
+  .carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.75rem 0;
+  }
+  .carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gray-300);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .carousel-dot.active { background: var(--teal); }
+
+  @media (max-width: 900px) {
+    .biz-layout { grid-template-columns: 1fr; }
+    .sidebar-card { position: static; }
+    .related-grid { grid-template-columns: 1fr; }
+    .biz-photo-grid { grid-template-columns: repeat(2, 1fr); }
+    .biz-photo-grid-img { height: 140px; }
+    .services-list { grid-template-columns: 1fr; }
+    .tab-gallery-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-row { grid-template-columns: 1fr; }
+    .hero-elevated { padding: 8rem 0 2.5rem; }
+    .biz-logo { width: 60px; height: 60px; }
+    .hero-ctas { flex-direction: column; }
+    .btn-cta-primary, .btn-cta-secondary { width: 100%; justify-content: center; }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Tab switching
+    const tabBar = document.getElementById('tab-bar');
+    if (tabBar) {
+      const buttons = tabBar.querySelectorAll('.tab-btn');
+      const panels = document.querySelectorAll('.tab-panel');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tabId = btn.getAttribute('data-tab');
+          buttons.forEach(b => b.classList.remove('active'));
+          panels.forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          const target = document.getElementById(`tab-${tabId}`);
+          if (target) target.classList.add('active');
+        });
+      });
+    }
+
+    // Lightbox
+    const images = document.querySelectorAll('[data-lightbox]');
+    if (images.length) {
+      const srcs = Array.from(images).map(img => (img as HTMLImageElement).src);
+      let currentIdx = 0;
+      function openLightbox(idx: number) {
+        currentIdx = idx;
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+        overlay.innerHTML = `
+          <button class="lightbox-close" aria-label="Close lightbox">&times;</button>
+          ${srcs.length > 1 ? '<button class="lightbox-nav lightbox-prev" aria-label="Previous photo">&lsaquo;</button>' : ''}
+          <img src="${srcs[idx]}" alt="Photo" />
+          ${srcs.length > 1 ? '<button class="lightbox-nav lightbox-next" aria-label="Next photo">&rsaquo;</button>' : ''}
+        `;
+        overlay.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          if (target.classList.contains('lightbox-overlay') || target.classList.contains('lightbox-close')) { overlay.remove(); }
+          else if (target.classList.contains('lightbox-prev')) { currentIdx = (currentIdx - 1 + srcs.length) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+          else if (target.classList.contains('lightbox-next')) { currentIdx = (currentIdx + 1) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+        });
+        document.addEventListener('keydown', function handler(e) {
+          if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', handler); }
+          if (e.key === 'ArrowLeft') { currentIdx = (currentIdx - 1 + srcs.length) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+          if (e.key === 'ArrowRight') { currentIdx = (currentIdx + 1) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+        });
+        document.body.appendChild(overlay);
+      }
+      images.forEach((img, idx) => { img.addEventListener('click', () => openLightbox(idx)); });
+    }
+
+    // Client-side photo refresh — fetches latest photos from Supabase
+    const gallerySection = document.getElementById('photo-gallery');
+    const slug = gallerySection?.dataset.slug;
+    const bizTitle = gallerySection?.dataset.title || '';
+    if (slug) {
+      fetch(`/api/photos?slug=${encodeURIComponent(slug)}`)
+        .then(r => r.json())
+        .then(({ photos: freshPhotos }) => {
+          if (!freshPhotos || freshPhotos.length === 0) return;
+
+          // Non-featured gallery
+          const galleryInner = document.getElementById('photo-gallery-inner');
+          if (galleryInner && gallerySection) {
+            gallerySection.style.display = '';
+            galleryInner.innerHTML = freshPhotos.map((p: any) =>
+              `<img src="${p.url}" alt="${p.alt_text || bizTitle}" loading="lazy" class="biz-photo-grid-img" data-lightbox />`
+            ).join('');
+          }
+
+          // Featured gallery tab
+          const featuredGrid = document.getElementById('featured-photo-grid');
+          if (featuredGrid) {
+            featuredGrid.innerHTML = freshPhotos.map((p: any) =>
+              `<img src="${p.url}" alt="${p.alt_text || bizTitle}" loading="lazy" class="tab-gallery-img" data-lightbox />`
+            ).join('');
+            // Show gallery tab button if it was hidden
+            const galleryTabBtn = document.querySelector('[data-tab="gallery"]') as HTMLElement;
+            if (galleryTabBtn) galleryTabBtn.style.display = '';
+          }
+
+          // Re-bind lightbox for new images
+          const newImages = document.querySelectorAll('[data-lightbox]');
+          if (newImages.length) {
+            const srcs = Array.from(newImages).map(img => (img as HTMLImageElement).src);
+            let currentIdx = 0;
+            function openLB(idx: number) {
+              currentIdx = idx;
+              const overlay = document.createElement('div');
+              overlay.className = 'lightbox-overlay';
+              overlay.innerHTML = `
+                <button class="lightbox-close" aria-label="Close lightbox">&times;</button>
+                ${srcs.length > 1 ? '<button class="lightbox-nav lightbox-prev" aria-label="Previous photo">&lsaquo;</button>' : ''}
+                <img src="${srcs[idx]}" alt="Photo" />
+                ${srcs.length > 1 ? '<button class="lightbox-nav lightbox-next" aria-label="Next photo">&rsaquo;</button>' : ''}
+              `;
+              overlay.addEventListener('click', (e) => {
+                const target = e.target as HTMLElement;
+                if (target.classList.contains('lightbox-overlay') || target.classList.contains('lightbox-close')) { overlay.remove(); }
+                else if (target.classList.contains('lightbox-prev')) { currentIdx = (currentIdx - 1 + srcs.length) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+                else if (target.classList.contains('lightbox-next')) { currentIdx = (currentIdx + 1) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+              });
+              document.addEventListener('keydown', function handler(e) {
+                if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', handler); }
+                if (e.key === 'ArrowLeft') { currentIdx = (currentIdx - 1 + srcs.length) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+                if (e.key === 'ArrowRight') { currentIdx = (currentIdx + 1) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+              });
+              document.body.appendChild(overlay);
+            }
+            newImages.forEach((img, idx) => { img.addEventListener('click', () => openLB(idx)); });
+          }
+        })
+        .catch(() => { /* silently fail — build-time photos still work */ });
+    }
+
+    // Photo Carousel (Elevated)
+    const carousel = document.getElementById('photo-carousel');
+    if (carousel) {
+      const track = document.getElementById('carousel-track') as HTMLElement;
+      const slides = track.querySelectorAll('img');
+      const dots = document.querySelectorAll('.carousel-dot');
+      const prevBtn = document.getElementById('carousel-prev');
+      const nextBtn = document.getElementById('carousel-next');
+      let current = 0;
+      const total = slides.length;
+      function goTo(idx: number) {
+        current = ((idx % total) + total) % total;
+        track.style.transform = `translateX(-${current * 100}%)`;
+        dots.forEach((d, i) => d.classList.toggle('active', i === current));
+      }
+      prevBtn?.addEventListener('click', () => goTo(current - 1));
+      nextBtn?.addEventListener('click', () => goTo(current + 1));
+      dots.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
+      // Auto-advance every 5 seconds
+      let autoPlay = setInterval(() => goTo(current + 1), 5000);
+      carousel.addEventListener('mouseenter', () => clearInterval(autoPlay));
+      carousel.addEventListener('mouseleave', () => { autoPlay = setInterval(() => goTo(current + 1), 5000); });
+    }
+
+    // Business Hours — highlight today + open/closed indicator
+    const hoursTable = document.getElementById('hours-table');
+    const openStatus = document.getElementById('open-status');
+    if (hoursTable && openStatus) {
+      const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const now = new Date();
+      const todayKey = days[now.getDay()];
+      const rows = hoursTable.querySelectorAll('.hours-row');
+      rows.forEach(row => {
+        if ((row as HTMLElement).dataset.day === todayKey) {
+          row.classList.add('today');
+        }
+      });
+      // Simple open/closed check
+      const todayRow = hoursTable.querySelector(`[data-day="${todayKey}"]`);
+      const timeText = todayRow?.querySelector('.hours-time')?.textContent?.trim() || '';
+      if (timeText === 'Closed' || timeText === '—') {
+        openStatus.textContent = '🔴 Closed Today';
+        openStatus.classList.add('is-closed');
+      } else if (timeText.includes('–')) {
+        // Parse times (basic)
+        const parts = timeText.split('–').map(t => t.trim());
+        const parseTime = (s: string) => {
+          const m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!m) return -1;
+          let h = parseInt(m[1]);
+          const min = parseInt(m[2]);
+          if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+          if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+          return h * 60 + min;
+        };
+        const openMin = parseTime(parts[0]);
+        const closeMin = parseTime(parts[1]);
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        if (openMin >= 0 && closeMin >= 0 && nowMin >= openMin && nowMin <= closeMin) {
+          openStatus.textContent = '🟢 Open Now';
+          openStatus.classList.add('is-open');
+        } else {
+          openStatus.textContent = '🔴 Closed Now';
+          openStatus.classList.add('is-closed');
+        }
+      }
+    }
+
+    // Deal Countdown (Elevated)
+    const countdownEl = document.getElementById('deal-countdown');
+    if (countdownEl) {
+      const expiry = countdownEl.dataset.expiry;
+      if (expiry) {
+        const expiryDate = new Date(expiry + 'T23:59:59');
+        function updateCountdown() {
+          const now = new Date();
+          const diff = expiryDate.getTime() - now.getTime();
+          if (diff <= 0) { countdownEl!.innerHTML = '<span style="color: #dc2626; font-weight: 600;">Deal Expired</span>'; return; }
+          const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          countdownEl!.innerHTML = `
+            <div class="countdown-unit"><span class="countdown-num">${d}</span><span class="countdown-label">Days</span></div>
+            <div class="countdown-unit"><span class="countdown-num">${h}</span><span class="countdown-label">Hours</span></div>
+            <div class="countdown-unit"><span class="countdown-num">${m}</span><span class="countdown-label">Min</span></div>
+          `;
+        }
+        updateCountdown();
+        setInterval(updateCountdown, 60000);
+      }
+    }
+
+    // Review form submission
+    const reviewForm = document.getElementById('review-form') as HTMLFormElement;
+    if (reviewForm) {
+      reviewForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('review-submit') as HTMLButtonElement;
+        const msgDiv = document.getElementById('review-message') as HTMLElement;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        msgDiv.textContent = '';
+        msgDiv.className = 'review-message';
+        try {
+          const data = {
+            slug: (document.getElementById('review-slug') as HTMLInputElement).value,
+            name: (document.getElementById('reviewer-name') as HTMLInputElement).value,
+            rating: parseInt((document.getElementById('review-rating') as HTMLSelectElement).value),
+            text: (document.getElementById('review-text') as HTMLTextAreaElement).value,
+          };
+          const res = await fetch('/api/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+          const result = await res.json();
+          if (res.ok) {
+            msgDiv.textContent = 'Thank you! Your review has been submitted for approval.';
+            msgDiv.className = 'review-message success';
+            reviewForm.reset();
+          } else {
+            msgDiv.textContent = result.error || 'Something went wrong. Please try again.';
+            msgDiv.className = 'review-message error';
+          }
+        } catch {
+          msgDiv.textContent = 'Network error. Please try again.';
+          msgDiv.className = 'review-message error';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Review';
+        }
+      });
+    }
+  });
+</script>

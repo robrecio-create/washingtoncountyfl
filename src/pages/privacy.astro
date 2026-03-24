@@ -1,0 +1,189 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout
+  title="Privacy Policy — JacksonCountyMS.com"
+  description="Privacy policy for JacksonCountyMS.com. Learn how we collect, use, and protect your personal information when you use our Jackson County business directory."
+>
+  <Header activePage="" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Legal</span>
+      <h1>Privacy Policy</h1>
+      <p>Last updated: March 2026</p>
+    </div>
+  </section>
+
+  <section class="privacy-section">
+    <div class="container">
+      <div class="privacy-content">
+
+        <h2>1. Introduction</h2>
+        <p>JacksonCountyMS.com ("we," "us," or "our") is a local business directory serving Jackson County, Mississippi. This Privacy Policy explains how we collect, use, and protect information when you visit our website or use our services.</p>
+
+        <h2>2. Information We Collect</h2>
+        <h3>Information You Provide</h3>
+        <ul>
+          <li><strong>Contact form submissions</strong> — your name, email address, phone number, and message when you contact us or submit an event listing.</li>
+          <li><strong>Business claim submissions</strong> — business owner name, contact details, and verification information when you claim a business listing.</li>
+        </ul>
+
+        <h3>Information Collected Automatically</h3>
+        <ul>
+          <li><strong>Usage data</strong> — pages viewed, time on site, and referring URLs, collected through standard web server logs and analytics tools.</li>
+          <li><strong>Device information</strong> — browser type, operating system, and IP address for security and analytics purposes.</li>
+        </ul>
+
+        <h2>3. How We Use Your Information</h2>
+        <p>We use collected information to:</p>
+        <ul>
+          <li>Respond to your inquiries and contact form submissions</li>
+          <li>Process and review business listing claims</li>
+          <li>Add submitted events to our community calendar</li>
+          <li>Improve the directory and user experience</li>
+          <li>Send occasional updates about your listing (business owners only)</li>
+        </ul>
+
+        <h2>4. Information Sharing</h2>
+        <p>We do not sell, trade, or rent your personal information to third parties. We may share information only in these limited circumstances:</p>
+        <ul>
+          <li><strong>Service providers</strong> — trusted vendors that help us operate the site (email delivery, hosting) under strict confidentiality agreements.</li>
+          <li><strong>Legal requirements</strong> — when required by law, court order, or to protect the rights and safety of our users.</li>
+        </ul>
+
+        <h2>5. Business Listing Information</h2>
+        <p>Business names, addresses, phone numbers, websites, and descriptions displayed in our directory are considered public information and are visible to all visitors. If you are a business owner and wish to update or remove your listing, please <a href="/contact/">contact us</a>.</p>
+
+        <h2>6. Cookies</h2>
+        <p>Our website uses minimal cookies necessary for the site to function properly. We do not use advertising cookies or cross-site tracking cookies. You can disable cookies in your browser settings, though some site features may not function as intended.</p>
+
+        <h2>7. Data Security</h2>
+        <p>We implement reasonable security measures to protect your personal information from unauthorized access, alteration, or disclosure. However, no internet transmission is 100% secure, and we cannot guarantee absolute security.</p>
+
+        <h2>8. Third-Party Links</h2>
+        <p>Our directory includes links to business websites and external resources. We are not responsible for the privacy practices or content of those third-party sites.</p>
+
+        <h2>9. Children's Privacy</h2>
+        <p>Our website is not directed to children under 13. We do not knowingly collect personal information from children. If you believe we have inadvertently collected such information, please contact us to have it removed.</p>
+
+        <h2>10. Your Rights</h2>
+        <p>You may request to:</p>
+        <ul>
+          <li>Access personal information we hold about you</li>
+          <li>Correct inaccurate information</li>
+          <li>Delete your personal information (where applicable)</li>
+          <li>Opt out of future communications</li>
+        </ul>
+        <p>To exercise these rights, contact us at the address below.</p>
+
+        <h2>11. Changes to This Policy</h2>
+        <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Continued use of the site after changes constitutes acceptance of the revised policy.</p>
+
+        <h2>12. Contact Us</h2>
+        <p>If you have questions about this Privacy Policy or how we handle your information, please use our <a href="/contact/">contact form</a>.</p>
+
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, #1a3a4a 0%, #2d6a7a 100%);
+    color: white;
+    padding: 4rem 0 3rem;
+    text-align: center;
+  }
+  .page-eyebrow {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 0.75rem;
+  }
+  .page-hero h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+  }
+  .page-hero p {
+    font-size: 0.95rem;
+    opacity: 0.75;
+    margin: 0;
+  }
+
+  .privacy-section {
+    padding: 4rem 0 5rem;
+    background: #f9f9f7;
+  }
+  .privacy-content {
+    max-width: 760px;
+    margin: 0 auto;
+    background: white;
+    padding: 2.5rem 3rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    font-size: 0.95rem;
+    line-height: 1.75;
+    color: #374151;
+  }
+  .privacy-content h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1a3a4a;
+    margin: 2rem 0 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+  .privacy-content h2:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+  .privacy-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 1.25rem 0 0.5rem;
+  }
+  .privacy-content p {
+    margin: 0 0 1rem;
+  }
+  .privacy-content ul {
+    margin: 0 0 1rem 1.5rem;
+    padding: 0;
+  }
+  .privacy-content li {
+    margin-bottom: 0.4rem;
+  }
+  .privacy-content a {
+    color: #2d6a7a;
+    text-decoration: underline;
+  }
+  .privacy-content a:hover {
+    color: #1a3a4a;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .privacy-content {
+      padding: 1.75rem 1.25rem;
+    }
+    .page-hero h1 {
+      font-size: 1.75rem;
+    }
+  }
+</style>

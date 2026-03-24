@@ -1,0 +1,199 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { categories } from '../../data/constants';
+import { getJacksonBusinesses } from '../../lib/businesses';
+
+const businesses = await getJacksonBusinesses();
+const categoriesWithCounts = categories.map(cat => ({
+  ...cat,
+  count: businesses.filter(b => b.categories?.includes(cat.name)).length,
+}));
+---
+
+<Layout
+  title="Browse Categories — Jackson County MS"
+  description="Browse Jackson County businesses by category. Find restaurants, contractors, healthcare providers, retail stores, automotive services, and more in Jackson County, MS."
+>
+  <Header activePage="Categories" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Business Directory</span>
+      <h1>Browse Categories</h1>
+      <p>Find businesses by category across Jackson County, Mississippi.</p>
+    </div>
+  </section>
+
+  <section class="categories-section">
+    <div class="container">
+      <div class="search-bar">
+        <input type="text" id="cat-search" placeholder="Search categories..." autocomplete="off" aria-label="Search categories" />
+      </div>
+      <p class="result-count" id="cat-result-count">{categoriesWithCounts.length} categories</p>
+      <div class="cat-grid" id="cat-grid">
+        {categoriesWithCounts.map(cat => (
+          <a href={`/categories/${cat.slug}/`} class="cat-card animate" data-name={cat.name.toLowerCase()}>
+            <span class="cat-icon">{cat.icon}</span>
+            <div class="cat-info">
+              <h2>{cat.name}</h2>
+              <span class="cat-count">{cat.count} businesses</span>
+            </div>
+            <span class="cat-arrow">&rarr;</span>
+          </a>
+        ))}
+      </div>
+      <p class="no-results" id="cat-no-results" style="display:none;">No results found. Try a different search term.</p>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .search-bar {
+    max-width: 480px;
+    margin: 0 auto 1rem;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-bar input:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(0,128,128,0.1);
+  }
+  .result-count {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-bottom: 1.5rem;
+  }
+
+  .categories-section {
+    padding: 3.5rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  .cat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    transition: all 0.25s;
+  }
+
+  .cat-card:hover {
+    border-color: var(--teal);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+  }
+
+  .cat-icon { font-size: 2rem; flex-shrink: 0; }
+
+  .cat-info { flex: 1; }
+
+  .cat-info h2 {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.15rem;
+  }
+
+  .cat-count {
+    font-size: 0.82rem;
+    color: var(--gray-600);
+  }
+
+  .cat-arrow {
+    color: var(--teal);
+    font-size: 1.2rem;
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+
+  .cat-card:hover .cat-arrow { transform: translateX(4px); }
+
+  .no-results {
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 0.95rem;
+    padding: 3rem 1rem;
+    font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .cat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .cat-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  const input = document.getElementById('cat-search') as HTMLInputElement;
+  const grid = document.getElementById('cat-grid')!;
+  const countEl = document.getElementById('cat-result-count')!;
+  const cards = Array.from(grid.querySelectorAll('.cat-card')) as HTMLElement[];
+
+  input?.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    let visible = 0;
+    cards.forEach(card => {
+      const match = !q || card.dataset.name?.includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    countEl.textContent = `${visible} categor${visible === 1 ? 'y' : 'ies'}`;
+    const noResults = document.getElementById('cat-no-results')!;
+    noResults.style.display = visible === 0 ? '' : 'none';
+  });
+</script>

@@ -1,0 +1,127 @@
+---
+import { towns } from '../data/constants';
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo" style="margin-bottom:1rem;">
+          <div class="logo-text">
+            <span class="logo-title">Jackson County <strong>MS</strong></span>
+            <span class="logo-sub">CONNECT</span>
+          </div>
+        </div>
+        <p>Connecting communities and businesses across Jackson County on the Mississippi Gulf Coast.</p>
+      </div>
+
+      <div class="footer-links">
+        <h4>Directory</h4>
+        <a href="/listings/">All Listings</a>
+        <a href="/categories/">Browse Categories</a>
+        <a href="/deals/">Deals & Coupons</a>
+        <a href="/contact/">Add Listing</a>
+      </div>
+
+      <div class="footer-links">
+        <h4>Communities</h4>
+        {towns.map(t => <a href={`/locations/${t.slug}/`}>{t.name}</a>)}
+      </div>
+
+      <div class="footer-links">
+        <h4>Company</h4>
+        <a href="/">About</a>
+        <a href="/contact/">Contact</a>
+        <a href="/privacy/">Privacy Policy</a>
+        <a href="https://gulfcoast-directory-admin.vercel.app/login" target="_blank" rel="noopener">Business Owner Login</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2026 JacksonCountyMS.com &mdash; Part of <a href="https://uscountydirectory.com" target="_blank" rel="noopener">US County Directory</a></p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--navy);
+    padding: 4rem 0 0;
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 3rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .footer-brand p {
+    color: rgba(255,255,255,0.55);
+    font-size: 0.9rem;
+    line-height: 1.7;
+    max-width: 300px;
+  }
+
+  .logo { display: flex; align-items: center; gap: 0.75rem; }
+  .logo-text { display: flex; flex-direction: column; }
+
+  .logo-title {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.15rem;
+    color: var(--white);
+    line-height: 1.2;
+    font-style: italic;
+  }
+
+  .logo-title strong { font-weight: 700; font-style: normal; }
+
+  .logo-sub {
+    font-size: 0.65rem;
+    color: var(--gold);
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .footer-links h4 {
+    font-family: var(--font-heading);
+    color: var(--white);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .footer-links a {
+    color: rgba(255,255,255,0.55);
+    font-size: 0.88rem;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--gold); }
+
+  .footer-bottom {
+    padding: 1.5rem 0;
+    text-align: center;
+  }
+
+  .footer-bottom p {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 900px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  }
+
+  @media (max-width: 600px) {
+    .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+  }
+</style>

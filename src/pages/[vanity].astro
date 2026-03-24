@@ -1,0 +1,620 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { getJacksonBusinesses } from '../lib/businesses';
+import { createClient } from '@supabase/supabase-js';
+
+export async function getStaticPaths() {
+  const businesses = await getJacksonBusinesses();
+  // Only generate paths for businesses that have a vanity_url set
+  return businesses
+    .filter((biz: any) => biz.vanity_url)
+    .map((biz: any) => ({
+      params: { vanity: biz.vanity_url },
+      props: { business: biz, allBusinesses: businesses },
+    }));
+}
+
+const { business, allBusinesses } = Astro.props;
+const biz = business as any;
+const COUNTY = 'jackson';
+
+// Supabase client for build-time queries
+let photos: any[] = [];
+let reviews: any[] = [];
+let isVerified = false;
+let sbBizData: any = null;
+
+const supabaseUrl = import.meta.env.SUPABASE_URL;
+const supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (supabaseUrl && supabaseKey) {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: sbBiz } = await supabase
+      .from('businesses')
+      .select('id, services, video_url, listing_tier')
+      .eq('county', COUNTY)
+      .eq('slug', biz.slug)
+      .single();
+
+    if (sbBiz) {
+      sbBizData = sbBiz;
+
+      const { data: photoData } = await supabase
+        .from('business_photos')
+        .select('*')
+        .eq('business_id', sbBiz.id)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true });
+      if (photoData) photos = photoData;
+
+      if (biz.featured) {
+        const { data: reviewData } = await supabase
+          .from('business_reviews')
+          .select('*')
+          .eq('business_id', sbBiz.id)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false });
+        if (reviewData) reviews = reviewData;
+      }
+
+      const { data: claimData } = await supabase
+        .from('business_claims')
+        .select('id')
+        .eq('business_id', sbBiz.id)
+        .eq('status', 'approved')
+        .limit(1);
+      if (claimData && claimData.length > 0) isVerified = true;
+    }
+  } catch (e) {
+    // Silently fail — all features are optional
+  }
+}
+
+const primaryPhoto = photos.find((p: any) => p.is_primary) || photos[0];
+const otherPhotos = photos.filter((p: any) => p !== primaryPhoto);
+
+const services = (sbBizData?.services || '').split('\n').map((s: string) => s.trim()).filter(Boolean);
+
+const videoUrl = sbBizData?.video_url || '';
+let videoEmbedUrl = '';
+if (videoUrl) {
+  const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+  if (ytMatch) videoEmbedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+  else if (vimeoMatch) videoEmbedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+}
+
+const avgRating = reviews.length > 0
+  ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+  : 0;
+
+const related = (allBusinesses as any[])
+  .filter(b =>
+    b.slug !== biz.slug &&
+    (b.categories?.[0] === biz.categories?.[0] || b.location?.[0] === biz.location?.[0])
+  )
+  .slice(0, 3);
+
+const isFeatured = biz.featured === true;
+const listingTier = sbBizData?.listing_tier || (isFeatured ? 'featured' : 'free');
+const isElevated = listingTier === 'elevated' || listingTier === 'seo';
+
+const hasDeal = !!biz.deal_title;
+const hasServices = services.length > 0;
+const hasGallery = photos.length > 0 || !!videoEmbedUrl;
+
+const rawVanityDesc = biz.excerpt || biz.content || '';
+const vanitySeoDec = rawVanityDesc.length > 155
+  ? rawVanityDesc.slice(0, 152).trimEnd() + '...'
+  : rawVanityDesc || `${biz.title} is a local business in ${biz.location?.[0] || 'Jackson County'}, Mississippi. Find contact info, hours, and more.`;
+---
+
+<Layout
+  title={`${biz.title} — Jackson County MS`}
+  description={vanitySeoDec}
+  ogImage={primaryPhoto?.url || undefined}
+>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": biz.title,
+    "description": vanitySeoDec,
+    "address": biz.address ? {
+      "@type": "PostalAddress",
+      "streetAddress": biz.address,
+      "addressLocality": biz.location?.[0] || "Jackson County",
+      "addressRegion": "MS",
+      "addressCountry": "US"
+    } : undefined,
+    "telephone": biz.phone || undefined,
+    "email": biz.email || undefined,
+    "url": biz.website || `https://www.jacksoncountyms.com/${biz.vanity_url}/`,
+    "image": primaryPhoto?.url || undefined,
+    "geo": (biz.latitude && biz.longitude) ? {
+      "@type": "GeoCoordinates",
+      "latitude": biz.latitude,
+      "longitude": biz.longitude
+    } : undefined,
+    ...(avgRating > 0 ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": avgRating.toFixed(1),
+        "reviewCount": reviews.length
+      }
+    } : {})
+  })} />
+
+  <Header activePage="Listings" />
+
+  <section class="page-hero">
+    <div class="container">
+      <a href="/listings/" class="back-link">&larr; All Listings</a>
+      <div class="biz-header">
+        <div>
+          <h1>{biz.title}</h1>
+          <div class="biz-badges">
+            {isElevated && <span class="badge badge-elevated">★ Elevated</span>}
+            {biz.featured && !isElevated && <span class="badge badge-featured">Featured</span>}
+            {isVerified && <span class="badge badge-verified">&#10003; Verified</span>}
+            {biz.tags?.includes('locally-owned') && <span class="badge badge-local">Locally Owned</span>}
+            {avgRating > 0 && (
+              <span class="badge badge-rating">
+                {'★'.repeat(Math.round(avgRating))}{'☆'.repeat(5 - Math.round(avgRating))}
+                <span class="rating-count">({reviews.length})</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div class="biz-quick-info">
+        {biz.categories?.[0] && (
+          <a href={`/categories/${biz.categories[0].toLowerCase().replace(/[&\s]+/g, '-').replace(/--+/g, '-')}/`} class="quick-tag">
+            {biz.categories[0]}
+          </a>
+        )}
+        {biz.location?.[0] && (
+          <a href={`/locations/${biz.location[0].toLowerCase().replace(/\s+/g, '-')}/`} class="quick-tag">
+            📍 {biz.location[0]}
+          </a>
+        )}
+      </div>
+    </div>
+  </section>
+
+  {!isFeatured && photos.length > 0 && (
+    <section class="biz-gallery-section">
+      <div class="container">
+        <div class="biz-gallery">
+          {primaryPhoto && (
+            <div class="gallery-hero">
+              <img src={primaryPhoto.url} alt={primaryPhoto.alt_text || biz.title} loading="eager" class="gallery-hero-img" data-lightbox />
+            </div>
+          )}
+          {otherPhotos.length > 0 && (
+            <div class="gallery-thumbs">
+              {otherPhotos.map((photo: any) => (
+                <img src={photo.url} alt={photo.alt_text || biz.title} loading="lazy" class="gallery-thumb" data-lightbox />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="biz-content">
+    <div class="container">
+      <div class="biz-layout">
+        <div class="biz-main">
+
+          {isFeatured ? (
+            <div class="mini-website">
+              <div class="tab-bar" id="tab-bar">
+                <button class="tab-btn active" data-tab="about">About</button>
+                {hasServices && <button class="tab-btn" data-tab="services">Services</button>}
+                {hasGallery && <button class="tab-btn" data-tab="gallery">Gallery</button>}
+                {hasDeal && <button class="tab-btn" data-tab="deals">Deals</button>}
+                <button class="tab-btn" data-tab="reviews">Reviews{reviews.length > 0 ? ` (${reviews.length})` : ''}</button>
+              </div>
+
+              <div class="tab-panel active" id="tab-about">
+                <div class="biz-description">
+                  {biz.content && <p>{biz.content}</p>}
+                  {!biz.content && <p class="text-gray">No description available yet.</p>}
+                </div>
+              </div>
+
+              {hasServices && (
+                <div class="tab-panel" id="tab-services">
+                  <ul class="services-list">
+                    {services.map((s: string) => (
+                      <li>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {hasGallery && (
+                <div class="tab-panel" id="tab-gallery">
+                  {photos.length > 0 && (
+                    <div class="tab-gallery-grid">
+                      {photos.map((photo: any) => (
+                        <img src={photo.url} alt={photo.alt_text || biz.title} loading="lazy" class="tab-gallery-img" data-lightbox />
+                      ))}
+                    </div>
+                  )}
+                  {videoEmbedUrl && (
+                    <div class="video-embed">
+                      <iframe src={videoEmbedUrl} title={`${biz.title} video`} frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {hasDeal && (
+                <div class="tab-panel" id="tab-deals">
+                  <div class="deal-box">
+                    <h3>{biz.deal_title}</h3>
+                    {biz.deal_description && <p>{biz.deal_description}</p>}
+                    {biz.deal_expiry && <span class="deal-expiry">Expires: {biz.deal_expiry}</span>}
+                  </div>
+                </div>
+              )}
+
+              <div class="tab-panel" id="tab-reviews">
+                {reviews.length > 0 ? (
+                  <div class="reviews-list">
+                    {reviews.map((r: any) => (
+                      <div class="review-card">
+                        <div class="review-header">
+                          <span class="review-stars">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                          <span class="review-author">{r.reviewer_name}</span>
+                          <span class="review-date">{new Date(r.created_at).toLocaleDateString()}</span>
+                        </div>
+                        {r.review_text && <p class="review-text">{r.review_text}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="no-reviews">No reviews yet. Be the first!</p>
+                )}
+                <div class="review-form-section">
+                  <h4>Leave a Review</h4>
+                  <form id="review-form" class="review-form">
+                    <input type="hidden" id="review-slug" value={biz.slug} />
+                    <div class="form-row">
+                      <div>
+                        <label for="reviewer-name">Your Name *</label>
+                        <input type="text" id="reviewer-name" required />
+                      </div>
+                      <div>
+                        <label for="review-rating">Rating *</label>
+                        <select id="review-rating" required>
+                          <option value="">Select...</option>
+                          <option value="5">★★★★★ (5)</option>
+                          <option value="4">★★★★☆ (4)</option>
+                          <option value="3">★★★☆☆ (3)</option>
+                          <option value="2">★★☆☆☆ (2)</option>
+                          <option value="1">★☆☆☆☆ (1)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label for="review-text">Your Review</label>
+                      <textarea id="review-text" rows="3" placeholder="Share your experience..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-teal" id="review-submit">Submit Review</button>
+                    <p class="review-note">Reviews are moderated and will appear after approval.</p>
+                    <div id="review-message" class="review-message"></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {biz.content && (
+                <div class="biz-description">
+                  <h2>About</h2>
+                  <p>{biz.content}</p>
+                </div>
+              )}
+
+              {biz.deal_title && (
+                <div class="deal-section">
+                  <div class="deal-header">
+                    <span class="deal-icon">🎟️</span>
+                    <h2>Current Deal</h2>
+                  </div>
+                  <div class="deal-box">
+                    <h3>{biz.deal_title}</h3>
+                    {biz.deal_description && <p>{biz.deal_description}</p>}
+                    {biz.deal_expiry && <span class="deal-expiry">Expires: {biz.deal_expiry}</span>}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {related.length > 0 && !isElevated && (
+            <div class="related-section">
+              <h2>Related Businesses</h2>
+              <div class="related-grid">
+                {related.map((r: any) => (
+                  <a href={`/listing/${r.slug}/`} class="related-card">
+                    <h4>{r.title}</h4>
+                    <div class="related-meta">
+                      {r.categories?.[0] && <span>{r.categories[0]}</span>}
+                      {r.location?.[0] && <span>📍 {r.location[0]}</span>}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <aside class="biz-sidebar">
+          <div class="sidebar-card">
+            <h3>Contact & Location</h3>
+            {biz.address && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">📍</span>
+                <div><strong>Address</strong><p>{biz.address}</p></div>
+              </div>
+            )}
+            {biz.phone && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">📞</span>
+                <div><strong>Phone</strong><p><a href={`tel:${biz.phone.replace(/[^\d+]/g, '')}`}>{biz.phone}</a></p></div>
+              </div>
+            )}
+            {biz.email && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">✉️</span>
+                <div><strong>Email</strong><p><a href={`mailto:${biz.email}`}>{biz.email}</a></p></div>
+              </div>
+            )}
+            {biz.website && (
+              <div class="sidebar-item">
+                <span class="sidebar-icon">🌐</span>
+                <div><strong>Website</strong><p><a href={biz.website} target="_blank" rel="noopener noreferrer">{biz.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</a></p></div>
+              </div>
+            )}
+            {biz.address && (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(biz.address)}`} target="_blank" rel="noopener noreferrer" class="btn btn-teal">Get Directions &rarr;</a>
+            )}
+            <div class="claim-divider"></div>
+            {isVerified ? (
+              <div class="claim-block claimed">
+                <span class="claim-icon">✅</span>
+                <strong>Verified Business</strong>
+                <p>This listing has been claimed and verified by the business owner.</p>
+                <a href="https://gulfcoast-directory-admin.vercel.app/login" target="_blank" rel="noopener" class="manage-link">Manage your listing &rarr;</a>
+              </div>
+            ) : (
+              <div class="claim-block">
+                <span class="claim-icon">🏢</span>
+                <strong>Own this business?</strong>
+                <p>Claim this listing to update your info, add photos, post deals, and connect with customers.</p>
+                <a href={`/claim/${biz.slug}/`} class="btn btn-gold">Claim This Listing</a>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 8rem 0 3rem; }
+  .back-link { display: inline-block; color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 1.25rem; transition: color 0.2s; }
+  .back-link:hover { color: var(--white); }
+  .biz-header h1 { font-family: var(--font-heading); font-size: clamp(1.8rem, 4vw, 2.6rem); color: var(--white); margin-bottom: 0.5rem; }
+  .biz-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 0.25rem 0.75rem; border-radius: 100px; }
+  .badge-elevated { color: #a78bfa; background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.3); }
+  .badge-featured { color: var(--gold); background: rgba(232,160,32,0.15); border: 1px solid rgba(232,160,32,0.3); }
+  .badge-verified { color: #34d399; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-local { color: var(--teal-light); background: rgba(26,127,122,0.15); border: 1px solid rgba(26,127,122,0.3); }
+  .badge-rating { color: #fbbf24; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3); letter-spacing: 0; text-transform: none; }
+  .rating-count { color: rgba(255,255,255,0.6); font-size: 0.6rem; margin-left: 0.25rem; }
+  .biz-quick-info { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .quick-tag { font-size: 0.82rem; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 0.3rem 0.8rem; border-radius: 100px; transition: background 0.2s; }
+  .quick-tag:hover { background: rgba(255,255,255,0.18); }
+  .biz-content { padding: 3rem 0 5rem; background: var(--gray-100); }
+  .biz-layout { display: grid; grid-template-columns: 1fr 340px; gap: 2.5rem; align-items: flex-start; }
+  .biz-main { display: flex; flex-direction: column; gap: 2.5rem; }
+  .mini-website { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; }
+  .tab-bar { display: flex; border-bottom: 2px solid var(--gray-200); overflow-x: auto; background: var(--gray-50, #f9fafb); }
+  .tab-btn { padding: 0.85rem 1.5rem; font-size: 0.88rem; font-weight: 600; color: var(--gray-500); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: color 0.2s, border-color 0.2s; }
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .tab-panel { display: none; padding: 2rem; }
+  .tab-panel.active { display: block; }
+  .tab-panel .biz-description p { color: var(--gray-600); line-height: 1.8; }
+  .text-gray { color: var(--gray-400); font-style: italic; }
+  .services-list { list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .services-list li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.92rem; color: var(--gray-700); padding: 0.5rem 0; }
+  .services-list li::before { content: '✓'; color: var(--teal); font-weight: 700; flex-shrink: 0; }
+  .tab-gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+  .tab-gallery-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; transition: transform 0.2s; }
+  .tab-gallery-img:hover { transform: scale(1.03); }
+  .video-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--radius-md); }
+  .video-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: var(--radius-md); }
+  .reviews-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+  .review-card { padding: 1.25rem; background: var(--gray-50, #f9fafb); border: 1px solid var(--gray-200); border-radius: var(--radius-md); }
+  .review-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  .review-stars { color: #fbbf24; font-size: 0.95rem; letter-spacing: 1px; }
+  .review-author { font-weight: 600; font-size: 0.88rem; color: var(--navy); }
+  .review-date { font-size: 0.78rem; color: var(--gray-400); }
+  .review-text { color: var(--gray-600); font-size: 0.9rem; line-height: 1.6; margin: 0; }
+  .no-reviews { color: var(--gray-400); font-style: italic; margin-bottom: 2rem; }
+  .review-form-section { border-top: 1px solid var(--gray-200); padding-top: 1.5rem; }
+  .review-form-section h4 { font-family: var(--font-heading); font-size: 1.1rem; color: var(--navy); margin-bottom: 1rem; }
+  .review-form { display: flex; flex-direction: column; gap: 0.75rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .review-form label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--gray-600); margin-bottom: 0.25rem; }
+  .review-form input, .review-form select, .review-form textarea { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.88rem; color: var(--gray-800); outline: none; transition: border-color 0.2s; }
+  .review-form input:focus, .review-form select:focus, .review-form textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,127,122,0.1); }
+  .review-note { font-size: 0.75rem; color: var(--gray-400); margin: 0; }
+  .review-message { font-size: 0.88rem; font-weight: 500; padding: 0.5rem 0; }
+  .review-message.success { color: var(--teal); }
+  .review-message.error { color: #ef4444; }
+  .biz-description { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 2rem; }
+  .biz-description h2 { font-family: var(--font-heading); font-size: 1.3rem; color: var(--navy); margin-bottom: 0.75rem; }
+  .biz-description p { color: var(--gray-600); line-height: 1.8; }
+  .deal-section { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 2rem; }
+  .deal-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+  .deal-icon { font-size: 1.4rem; }
+  .deal-header h2 { font-family: var(--font-heading); font-size: 1.3rem; color: var(--navy); }
+  .deal-box { background: rgba(232,160,32,0.06); border: 1px solid rgba(232,160,32,0.2); border-radius: var(--radius-md); padding: 1.5rem; }
+  .deal-box h3 { font-family: var(--font-heading); font-size: 1.15rem; color: var(--navy); margin-bottom: 0.4rem; }
+  .deal-box p { color: var(--gray-600); font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .deal-expiry { font-size: 0.8rem; color: var(--gray-400); }
+  .related-section h2 { font-family: var(--font-heading); font-size: 1.3rem; color: var(--navy); margin-bottom: 1rem; }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .related-card { padding: 1.25rem; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-md); transition: all 0.25s; }
+  .related-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .related-card h4 { font-family: var(--font-heading); font-size: 0.95rem; color: var(--navy); margin-bottom: 0.4rem; }
+  .related-meta { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.78rem; color: var(--gray-600); }
+  .sidebar-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 2rem; position: sticky; top: 90px; }
+  .sidebar-card h3 { font-family: var(--font-heading); font-size: 1.15rem; color: var(--navy); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--gray-200); }
+  .sidebar-item { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; }
+  .sidebar-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .sidebar-item strong { display: block; font-size: 0.8rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.1rem; }
+  .sidebar-item p { font-size: 0.9rem; color: var(--navy); margin: 0; line-height: 1.4; word-break: break-word; }
+  .sidebar-item a { color: var(--teal); transition: color 0.2s; }
+  .sidebar-item a:hover { color: var(--teal-light); text-decoration: underline; }
+  .claim-divider { border-top: 1px solid var(--gray-200); margin: 1.25rem 0; }
+  .claim-block { text-align: center; }
+  .claim-icon { font-size: 1.75rem; display: block; margin-bottom: 0.5rem; }
+  .claim-block strong { display: block; font-family: var(--font-heading); font-size: 1rem; color: var(--navy); margin-bottom: 0.35rem; }
+  .claim-block p { color: var(--gray-600); font-size: 0.82rem; line-height: 1.5; margin: 0 0 1rem; }
+  .manage-link { display: inline-block; color: var(--teal); font-size: 0.82rem; font-weight: 600; text-decoration: none; transition: color 0.2s; }
+  .manage-link:hover { color: var(--teal-light); text-decoration: underline; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 0.8rem 1.6rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-md); border: 2px solid transparent; transition: all 0.25s; margin-top: 0.5rem; cursor: pointer; }
+  .btn-teal { background: var(--teal); color: var(--white); border-color: var(--teal); }
+  .btn-teal:hover { background: var(--teal-light); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+  .btn-gold { background: var(--gold); color: var(--navy); border-color: var(--gold); margin-top: 0; }
+  .btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,160,32,0.35); }
+  .biz-gallery-section { padding: 2rem 0 0; background: var(--gray-100); }
+  .biz-gallery { display: flex; flex-direction: column; gap: 0.5rem; }
+  .gallery-hero { border-radius: var(--radius-lg); overflow: hidden; max-height: 480px; }
+  .gallery-hero-img { width: 100%; height: 100%; max-height: 480px; object-fit: cover; cursor: pointer; transition: transform 0.3s; }
+  .gallery-hero-img:hover { transform: scale(1.01); }
+  .gallery-thumbs { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.25rem; }
+  .gallery-thumb { width: 100px; height: 75px; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s, transform 0.2s; flex-shrink: 0; }
+  .gallery-thumb:hover { border-color: var(--teal); transform: scale(1.05); }
+  .lightbox-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 1rem; cursor: pointer; }
+  .lightbox-overlay img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: var(--radius-md); cursor: default; }
+  .lightbox-close { position: absolute; top: 1rem; right: 1.5rem; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; line-height: 1; padding: 0.5rem; opacity: 0.8; transition: opacity 0.2s; }
+  .lightbox-close:hover { opacity: 1; }
+  .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); color: white; font-size: 2.5rem; cursor: pointer; background: rgba(0,0,0,0.3); border: none; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.2s; }
+  .lightbox-nav:hover { opacity: 1; }
+  .lightbox-prev { left: 1rem; }
+  .lightbox-next { right: 1rem; }
+  @media (max-width: 900px) {
+    .biz-layout { grid-template-columns: 1fr; }
+    .sidebar-card { position: static; }
+    .related-grid { grid-template-columns: 1fr; }
+    .gallery-hero { max-height: 320px; }
+    .gallery-hero-img { max-height: 320px; }
+    .services-list { grid-template-columns: 1fr; }
+    .tab-gallery-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabBar = document.getElementById('tab-bar');
+    if (tabBar) {
+      const buttons = tabBar.querySelectorAll('.tab-btn');
+      const panels = document.querySelectorAll('.tab-panel');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tabId = btn.getAttribute('data-tab');
+          buttons.forEach(b => b.classList.remove('active'));
+          panels.forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          const target = document.getElementById(`tab-${tabId}`);
+          if (target) target.classList.add('active');
+        });
+      });
+    }
+
+    const images = document.querySelectorAll('[data-lightbox]');
+    if (images.length) {
+      const srcs = Array.from(images).map(img => (img as HTMLImageElement).src);
+      let currentIdx = 0;
+      function openLightbox(idx: number) {
+        currentIdx = idx;
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+        overlay.innerHTML = `
+          <button class="lightbox-close">&times;</button>
+          ${srcs.length > 1 ? '<button class="lightbox-nav lightbox-prev">&lsaquo;</button>' : ''}
+          <img src="${srcs[idx]}" alt="Photo" />
+          ${srcs.length > 1 ? '<button class="lightbox-nav lightbox-next">&rsaquo;</button>' : ''}
+        `;
+        overlay.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          if (target.classList.contains('lightbox-overlay') || target.classList.contains('lightbox-close')) { overlay.remove(); }
+          else if (target.classList.contains('lightbox-prev')) { currentIdx = (currentIdx - 1 + srcs.length) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+          else if (target.classList.contains('lightbox-next')) { currentIdx = (currentIdx + 1) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+        });
+        document.addEventListener('keydown', function handler(e) {
+          if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', handler); }
+          if (e.key === 'ArrowLeft') { currentIdx = (currentIdx - 1 + srcs.length) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+          if (e.key === 'ArrowRight') { currentIdx = (currentIdx + 1) % srcs.length; (overlay.querySelector('img') as HTMLImageElement).src = srcs[currentIdx]; }
+        });
+        document.body.appendChild(overlay);
+      }
+      images.forEach((img, idx) => { img.addEventListener('click', () => openLightbox(idx)); });
+    }
+
+    const reviewForm = document.getElementById('review-form') as HTMLFormElement;
+    if (reviewForm) {
+      reviewForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('review-submit') as HTMLButtonElement;
+        const msgDiv = document.getElementById('review-message') as HTMLElement;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        msgDiv.textContent = '';
+        msgDiv.className = 'review-message';
+        try {
+          const data = {
+            slug: (document.getElementById('review-slug') as HTMLInputElement).value,
+            name: (document.getElementById('reviewer-name') as HTMLInputElement).value,
+            rating: parseInt((document.getElementById('review-rating') as HTMLSelectElement).value),
+            text: (document.getElementById('review-text') as HTMLTextAreaElement).value,
+          };
+          const res = await fetch('/api/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+          const result = await res.json();
+          if (res.ok) {
+            msgDiv.textContent = 'Thank you! Your review has been submitted for approval.';
+            msgDiv.className = 'review-message success';
+            reviewForm.reset();
+          } else {
+            msgDiv.textContent = result.error || 'Something went wrong. Please try again.';
+            msgDiv.className = 'review-message error';
+          }
+        } catch {
+          msgDiv.textContent = 'Network error. Please try again.';
+          msgDiv.className = 'review-message error';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Review';
+        }
+      });
+    }
+  });
+</script>

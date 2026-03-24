@@ -1,0 +1,437 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { towns } from '../data/constants';
+---
+
+<Layout
+  title="Submit an Event — Jackson County MS"
+  description="Submit your event to the Jackson County MS community calendar. Share festivals, fundraisers, markets, and local happenings with residents across Jackson County."
+>
+  <Header activePage="" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Share Your Event</span>
+      <h1>Submit an Event</h1>
+      <p>Have an upcoming event in Jackson County? Let us know and we'll add it to our community calendar.</p>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <div class="container">
+      <div class="form-layout">
+        <div class="form-info">
+          <h2>Get the Word Out</h2>
+          <p>Submit your community event, festival, fundraiser, or activity and reach residents and visitors across Jackson County.</p>
+
+          <div class="info-cards">
+            <div class="info-card">
+              <span class="info-icon">📅</span>
+              <div>
+                <strong>Free Event Listing</strong>
+                <p>All community event submissions are free</p>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">👥</span>
+              <div>
+                <strong>Reach the Community</strong>
+                <p>Your event will be seen by locals and visitors</p>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">⚡</span>
+              <div>
+                <strong>Quick Review</strong>
+                <p>Events are reviewed and posted promptly</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form class="contact-form" id="event-form">
+          <h3 class="form-section-title">Event Details</h3>
+          <div class="form-row">
+            <div class="form-group full-width">
+              <label for="event-title">Event Name *</label>
+              <input type="text" id="event-title" name="event-title" placeholder="e.g. Ocean Springs Art Walk" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="event-date">Event Date *</label>
+              <input type="date" id="event-date" name="event-date" required />
+            </div>
+            <div class="form-group">
+              <label for="event-end-date">End Date (if multi-day)</label>
+              <input type="date" id="event-end-date" name="event-end-date" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="start-time">Start Time *</label>
+              <input type="time" id="start-time" name="start-time" required />
+            </div>
+            <div class="form-group">
+              <label for="end-time">End Time</label>
+              <input type="time" id="end-time" name="end-time" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="venue">Venue Name *</label>
+              <input type="text" id="venue" name="venue" placeholder="e.g. The Mary C. O'Keefe Cultural Arts Center" required />
+            </div>
+            <div class="form-group">
+              <label for="event-city">City *</label>
+              <select id="event-city" name="event-city" required>
+                <option value="">Select a city...</option>
+                {towns.map(t => <option value={t.name}>{t.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group full-width">
+              <label for="address">Venue Address</label>
+              <input type="text" id="address" name="address" placeholder="123 Main Street, Ocean Springs, MS 39564" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cost">Cost / Admission</label>
+              <input type="text" id="cost" name="cost" placeholder="e.g. Free, $10, $25 per person" />
+            </div>
+            <div class="form-group">
+              <label for="recurring">Recurring?</label>
+              <select id="recurring" name="recurring">
+                <option value="">One-time event</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Annual">Annual</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="description">Event Description *</label>
+            <textarea id="description" name="description" rows="5" placeholder="Tell us about your event — what can attendees expect?" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="website">Event Website or Social Media Link</label>
+            <input type="url" id="website" name="website" placeholder="https://..." />
+          </div>
+
+          <h3 class="form-section-title">Your Contact Info</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contact-name">Your Name *</label>
+              <input type="text" id="contact-name" name="contact-name" placeholder="John Smith" required />
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email Address *</label>
+              <input type="email" id="contact-email" name="contact-email" placeholder="john@example.com" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contact-phone">Phone Number</label>
+              <input type="tel" id="contact-phone" name="contact-phone" placeholder="(228) 555-1234" />
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-gold btn-lg" id="submit-btn">Submit Event</button>
+          <div class="form-status" id="form-status"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<script>
+  const form = document.getElementById('event-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const formStatus = document.getElementById('form-status')!;
+
+  function formatTime12(time24: string): string {
+    if (!time24) return '';
+    const [h, m] = time24.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    formStatus.textContent = '';
+    formStatus.className = 'form-status';
+
+    const getValue = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value;
+
+    const startTime = formatTime12(getValue('start-time'));
+    const endTime = formatTime12(getValue('end-time'));
+    const timeStr = endTime ? `${startTime} – ${endTime}` : startTime;
+
+    const data = {
+      name: getValue('contact-name'),
+      email: getValue('contact-email'),
+      phone: getValue('contact-phone'),
+      business: 'Event Submission',
+      town: getValue('event-city'),
+      message: [
+        `EVENT SUBMISSION`,
+        ``,
+        `Event: ${getValue('event-title')}`,
+        `Date: ${getValue('event-date')}${getValue('event-end-date') ? ' to ' + getValue('event-end-date') : ''}`,
+        `Time: ${timeStr}`,
+        `Venue: ${getValue('venue')}`,
+        `Address: ${getValue('address')}`,
+        `City: ${getValue('event-city')}`,
+        `Cost: ${getValue('cost') || 'Not specified'}`,
+        `Recurring: ${getValue('recurring') || 'One-time event'}`,
+        `Website: ${getValue('website') || 'Not provided'}`,
+        ``,
+        `Description:`,
+        getValue('description'),
+      ].join('\n'),
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        formStatus.textContent = 'Event submitted successfully! We\'ll review it and add it to the calendar soon.';
+        formStatus.className = 'form-status success';
+        form.reset();
+      } else {
+        formStatus.textContent = result.error || 'Something went wrong. Please try again.';
+        formStatus.className = 'form-status error';
+      }
+    } catch {
+      formStatus.textContent = 'Network error. Please check your connection and try again.';
+      formStatus.className = 'form-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit Event';
+  });
+</script>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .form-section {
+    padding: 4rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .form-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 4rem;
+    align-items: flex-start;
+  }
+
+  .form-info h2 {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    color: var(--navy);
+    margin-bottom: 1rem;
+  }
+
+  .form-info > p {
+    color: var(--gray-600);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  .info-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-200);
+  }
+
+  .info-icon { font-size: 1.5rem; flex-shrink: 0; }
+
+  .info-card strong {
+    display: block;
+    color: var(--navy);
+    font-size: 0.95rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .info-card p {
+    color: var(--gray-600);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: var(--white);
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+  }
+
+  .form-section-title {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    color: var(--navy);
+    margin: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--gold);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--navy);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--gray-800);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(26,127,122,0.1);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+    cursor: pointer;
+  }
+
+  .btn-lg { padding: 0.9rem 2.2rem; font-size: 1rem; }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(232,160,32,0.35);
+  }
+
+  .contact-form .btn { align-self: flex-start; margin-top: 0.5rem; }
+  .contact-form .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .full-width { grid-column: 1 / -1; }
+
+  .form-status {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0;
+    border-radius: var(--radius-md);
+  }
+
+  .form-status.success {
+    color: var(--teal);
+    background: rgba(26,127,122,0.08);
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(26,127,122,0.2);
+  }
+
+  .form-status.error {
+    color: #c0392b;
+    background: rgba(192,57,43,0.08);
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(192,57,43,0.2);
+  }
+
+  @media (max-width: 900px) {
+    .form-layout { grid-template-columns: 1fr; gap: 2.5rem; }
+  }
+
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+    .contact-form { padding: 1.5rem; }
+  }
+</style>

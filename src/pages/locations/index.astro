@@ -1,0 +1,268 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { towns } from '../../data/constants';
+import { getJacksonBusinesses } from '../../lib/businesses';
+
+const businesses = await getJacksonBusinesses();
+const townsWithCounts = towns.map(town => ({
+  ...town,
+  businesses: businesses.filter(b => b.location?.includes(town.name)).length,
+}));
+---
+
+<Layout
+  title="Explore Cities — Jackson County MS"
+  description="Explore local businesses by city in Jackson County, Mississippi. Find businesses in Ocean Springs, Pascagoula, Gautier, Moss Point, Vancleave, and Escatawpa."
+>
+  <Header activePage="Locations" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Our Communities</span>
+      <h1>Explore Jackson County Cities</h1>
+      <p>Six unique communities, each with their own character and charm.</p>
+    </div>
+  </section>
+
+  <section class="locations-section">
+    <div class="container">
+      <div class="search-bar">
+        <input type="text" id="loc-search" placeholder="Search locations..." autocomplete="off" aria-label="Search locations" />
+      </div>
+      <p class="result-count" id="loc-result-count">{townsWithCounts.length} locations</p>
+      <div class="towns-grid" id="towns-grid">
+        {townsWithCounts.map(town => (
+          <a href={`/locations/${town.slug}/`} class="town-card animate" data-name={town.name.toLowerCase()}>
+            <h2>{town.name}</h2>
+            <p>{town.businesses} businesses</p>
+            <span class="town-arrow">&rarr;</span>
+          </a>
+        ))}
+      </div>
+      <p class="no-results" id="loc-no-results" style="display:none;">No results found. Try a different search term.</p>
+    </div>
+  </section>
+
+  <section class="map-cta">
+    <div class="container">
+      <div class="cta-card">
+        <h2>Discover What Jackson County Has to Offer</h2>
+        <p>From the arts and culture of Ocean Springs to the industrial heritage of Pascagoula, each community offers something unique.</p>
+        <a href="/listings/" class="btn btn-gold">Browse All Listings</a>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .search-bar {
+    max-width: 480px;
+    margin: 0 auto 1rem;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-bar input:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(0,128,128,0.1);
+  }
+  .result-count {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-bottom: 1.5rem;
+  }
+
+  .locations-section {
+    padding: 3.5rem 0 5rem;
+    background: var(--white);
+  }
+
+  .towns-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .town-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2rem;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .town-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-light));
+    transform: scaleX(0);
+    transition: transform 0.3s;
+    transform-origin: left;
+  }
+
+  .town-card:hover {
+    border-color: var(--teal);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-4px);
+  }
+
+  .town-card:hover::before { transform: scaleX(1); }
+
+  .town-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.4rem;
+  }
+
+  .town-card p {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    flex: 1;
+  }
+
+  .town-arrow {
+    color: var(--teal);
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    transition: transform 0.25s;
+  }
+
+  .town-card:hover .town-arrow { transform: translateX(6px); }
+
+  .map-cta {
+    padding: 0 0 5rem;
+    background: var(--white);
+  }
+
+  .cta-card {
+    text-align: center;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    border-radius: var(--radius-xl);
+    padding: 4rem 2rem;
+  }
+
+  .cta-card h2 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    color: var(--white);
+    margin-bottom: 1rem;
+  }
+
+  .cta-card p {
+    color: rgba(255,255,255,0.7);
+    max-width: 550px;
+    margin: 0 auto 2rem;
+    line-height: 1.7;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.8rem 2rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+  }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(232,160,32,0.35);
+  }
+
+  .no-results {
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 0.95rem;
+    padding: 3rem 1rem;
+    font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .towns-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .towns-grid { grid-template-columns: 1fr; }
+    .cta-card { padding: 3rem 1.5rem; }
+  }
+</style>
+
+<script>
+  const input = document.getElementById('loc-search') as HTMLInputElement;
+  const grid = document.getElementById('towns-grid')!;
+  const countEl = document.getElementById('loc-result-count')!;
+  const cards = Array.from(grid.querySelectorAll('.town-card')) as HTMLElement[];
+
+  input?.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    let visible = 0;
+    cards.forEach(card => {
+      const match = !q || card.dataset.name?.includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    countEl.textContent = `${visible} location${visible === 1 ? '' : 's'}`;
+    const noResults = document.getElementById('loc-no-results')!;
+    noResults.style.display = visible === 0 ? '' : 'none';
+  });
+</script>

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.astro/
+.vercel/
+.DS_Store
+Icon?
+Icon
+
+# Temp files
+events.png
+CLAUDE.md

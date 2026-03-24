@@ -1,0 +1,355 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { towns } from '../data/constants';
+---
+
+<Layout
+  title="Contact Us — Jackson County MS"
+  description="Contact JacksonCountyMS.com to list your business, update a listing, or ask a question. We're here to help connect you with the Jackson County community."
+>
+  <Header activePage="Contact" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Get in Touch</span>
+      <h1>Contact Us</h1>
+      <p>Have a question or want to list your business? We'd love to hear from you.</p>
+    </div>
+  </section>
+
+  <section class="contact-section">
+    <div class="container">
+      <div class="contact-layout">
+        <div class="contact-info">
+          <h2>List Your Business</h2>
+          <p>Ready to reach more local customers? Add your business to the Jackson County directory and connect with residents and visitors.</p>
+
+          <div class="info-cards">
+            <div class="info-card">
+              <span class="info-icon">📍</span>
+              <div>
+                <strong>Local Focus</strong>
+                <p>Serving all six Jackson County communities</p>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">⭐</span>
+              <div>
+                <strong>Free Verified Listing</strong>
+                <p>Basic listings are always free</p>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">🎟️</span>
+              <div>
+                <strong>Post Deals & Coupons</strong>
+                <p>Attract customers with special offers</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form class="contact-form" id="contact-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Your Name *</label>
+              <input type="text" id="name" name="name" placeholder="John Smith" required />
+            </div>
+            <div class="form-group">
+              <label for="email">Email Address *</label>
+              <input type="email" id="email" name="email" placeholder="john@example.com" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="phone">Phone Number *</label>
+              <input type="tel" id="phone" name="phone" placeholder="(228) 555-1234" required />
+            </div>
+            <div class="form-group">
+              <label for="business">Business Name *</label>
+              <input type="text" id="business" name="business" placeholder="Your Business LLC" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group full-width">
+              <label for="town">City *</label>
+              <select id="town" name="town" required>
+                <option value="">Select a city...</option>
+                {towns.map(t => <option value={t.name}>{t.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="message">Message *</label>
+            <textarea id="message" name="message" rows="5" placeholder="Tell us about your business..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-gold btn-lg" id="submit-btn">Send Message</button>
+          <div class="form-status" id="form-status"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<script>
+  // Pre-fill business name from claim link query param
+  const params = new URLSearchParams(window.location.search);
+  const claimBiz = params.get('claim');
+  if (claimBiz) {
+    const bizInput = document.getElementById('business') as HTMLInputElement;
+    const msgInput = document.getElementById('message') as HTMLTextAreaElement;
+    if (bizInput) bizInput.value = claimBiz;
+    if (msgInput) msgInput.value = `I am the owner of ${claimBiz} and would like to claim this listing.`;
+    if (msgInput) msgInput.focus();
+  }
+
+  // Form submission
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const formStatus = document.getElementById('form-status')!;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+    formStatus.textContent = '';
+    formStatus.className = 'form-status';
+
+    const data = {
+      name: (document.getElementById('name') as HTMLInputElement).value,
+      email: (document.getElementById('email') as HTMLInputElement).value,
+      phone: (document.getElementById('phone') as HTMLInputElement).value,
+      business: (document.getElementById('business') as HTMLInputElement).value,
+      town: (document.getElementById('town') as HTMLSelectElement).value,
+      message: (document.getElementById('message') as HTMLTextAreaElement).value,
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        formStatus.textContent = 'Message sent successfully! We\'ll be in touch soon.';
+        formStatus.className = 'form-status success';
+        form.reset();
+      } else {
+        formStatus.textContent = result.error || 'Something went wrong. Please try again.';
+        formStatus.className = 'form-status error';
+      }
+    } catch {
+      formStatus.textContent = 'Network error. Please check your connection and try again.';
+      formStatus.className = 'form-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Send Message';
+  });
+</script>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .contact-section {
+    padding: 4rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .contact-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 4rem;
+    align-items: flex-start;
+  }
+
+  .contact-info h2 {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    color: var(--navy);
+    margin-bottom: 1rem;
+  }
+
+  .contact-info > p {
+    color: var(--gray-600);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  .info-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-200);
+  }
+
+  .info-icon { font-size: 1.5rem; flex-shrink: 0; }
+
+  .info-card strong {
+    display: block;
+    color: var(--navy);
+    font-size: 0.95rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .info-card p {
+    color: var(--gray-600);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: var(--white);
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--navy);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--gray-800);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(26,127,122,0.1);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+  }
+
+  .btn-lg { padding: 0.9rem 2.2rem; font-size: 1rem; }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(232,160,32,0.35);
+  }
+
+  .contact-form .btn { align-self: flex-start; margin-top: 0.5rem; }
+  .contact-form .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .full-width { grid-column: 1 / -1; }
+
+  .form-status {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0;
+    border-radius: var(--radius-md);
+  }
+
+  .form-status.success {
+    color: var(--teal);
+    background: rgba(26,127,122,0.08);
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(26,127,122,0.2);
+  }
+
+  .form-status.error {
+    color: #c0392b;
+    background: rgba(192,57,43,0.08);
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(192,57,43,0.2);
+  }
+
+  @media (max-width: 900px) {
+    .contact-layout { grid-template-columns: 1fr; gap: 2.5rem; }
+  }
+
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+    .contact-form { padding: 1.5rem; }
+  }
+</style>

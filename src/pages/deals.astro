@@ -1,0 +1,256 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { towns } from '../data/constants';
+import { getJacksonBusinesses } from '../lib/businesses';
+
+const businesses = await getJacksonBusinesses();
+const deals = businesses.filter(b => b.deal_title && b.deal_title.trim());
+---
+
+<Layout
+  title="Deals & Coupons — Jackson County MS"
+  description="Find exclusive local coupons and deals from businesses across Jackson County, Mississippi. Save money at restaurants, shops, and services near you."
+>
+  <Header activePage="Deals" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Save Local</span>
+      <h1>Local Coupons & Deals</h1>
+      <p>Exclusive offers from businesses across Jackson County.</p>
+    </div>
+  </section>
+
+  <section class="deals-section">
+    <div class="container">
+      {deals.length > 0 ? (
+        <div class="deals-grid">
+          {deals.map(biz => {
+            const isPaid = biz.listing_tier === 'featured' || biz.listing_tier === 'elevated' || biz.listing_tier === 'seo';
+            return (
+            <div class={`deal-card${isPaid ? ' deal-card-featured' : ''}`}>
+              <div class="deal-badge">{isPaid ? '⭐ Featured Deal' : 'Deal'}</div>
+              <h2>{biz.deal_title}</h2>
+              <p class="deal-business">
+                <a href={`/listing/${biz.slug}/`}>{biz.title}</a>
+                {biz.location?.[0] && <span> &middot; {biz.location[0]}</span>}
+              </p>
+              {biz.deal_description && <p class="deal-desc">{biz.deal_description}</p>}
+              {biz.deal_expiry && <p class="deal-expiry">Expires: {biz.deal_expiry}</p>}
+              <a href={`/listing/${biz.slug}/`} class="btn btn-gold btn-sm">Redeem &rarr;</a>
+            </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div class="empty-state">
+          <span class="empty-icon">🎟️</span>
+          <h3>No Deals Available Right Now</h3>
+          <p>Check back soon for exclusive offers from local businesses.</p>
+        </div>
+      )}
+
+      <div class="cta-block">
+        <h2>Own a Local Business?</h2>
+        <p>List your business and post deals to reach more customers in Jackson County.</p>
+        <a href="/contact/" class="btn btn-gold">Add Your Business</a>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+  }
+
+  .deals-section {
+    padding: 3.5rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .deals-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 4rem;
+  }
+
+  .deal-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .deal-card-featured {
+    border: 2px solid var(--gold);
+    background: linear-gradient(135deg, #fffef5 0%, #fff9e6 100%);
+    box-shadow: 0 2px 12px rgba(232,160,32,0.1);
+  }
+  .deal-card-featured .deal-badge {
+    background: linear-gradient(135deg, var(--gold), #d4940a);
+    font-size: 0.6rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .deal-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--white);
+    background: var(--gold);
+    padding: 0.2rem 0.7rem;
+    border-radius: 100px;
+  }
+
+  .deal-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.4rem;
+    padding-right: 3rem;
+  }
+
+  .deal-business {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-bottom: 0.75rem;
+  }
+
+  .deal-business a {
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  .deal-business a:hover { text-decoration: underline; }
+
+  .deal-desc {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    line-height: 1.6;
+    flex: 1;
+    margin-bottom: 0.75rem;
+  }
+
+  .deal-expiry {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    margin-bottom: 1rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+    margin-bottom: 4rem;
+  }
+
+  .empty-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state h3 {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+
+  .empty-state p {
+    color: var(--gray-600);
+  }
+
+  .cta-block {
+    text-align: center;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    border-radius: var(--radius-xl);
+    padding: 3.5rem 2rem;
+  }
+
+  .cta-block h2 {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .cta-block p {
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 1.5rem;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.7rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+  }
+
+  .btn-sm { padding: 0.5rem 1.2rem; font-size: 0.85rem; }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(232,160,32,0.35);
+  }
+
+  @media (max-width: 900px) {
+    .deals-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .deals-grid { grid-template-columns: 1fr; }
+    .cta-block { padding: 2.5rem 1.5rem; }
+  }
+</style>

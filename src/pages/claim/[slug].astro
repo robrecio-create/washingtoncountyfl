@@ -1,0 +1,575 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { getJacksonBusinesses } from '../../lib/businesses';
+
+export async function getStaticPaths() {
+  const businesses = await getJacksonBusinesses();
+  return businesses.map(biz => ({
+    params: { slug: biz.slug },
+    props: { business: biz },
+  }));
+}
+
+const { business } = Astro.props;
+const biz = business as any;
+---
+
+<Layout title={`Claim ${biz.title} — Jackson County MS`}>
+  <Header activePage="" />
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="page-eyebrow">Claim This Listing</span>
+      <h1>Claim Your Business</h1>
+      <p>Verify your ownership and take control of your listing on JacksonCountyMS.com.</p>
+    </div>
+  </section>
+
+  <section class="claim-section">
+    <div class="container">
+      <div class="claim-layout">
+        <div class="claim-main">
+          <!-- Business Info Card -->
+          <div class="biz-info-card">
+            <div class="biz-info-top">
+              <div class="biz-info-icon">🏢</div>
+              <div>
+                <h2>{biz.title}</h2>
+                {biz.address && <p class="biz-address">{biz.address}</p>}
+                <div class="biz-tags">
+                  {biz.categories?.[0] && <span class="biz-tag">{biz.categories[0]}</span>}
+                  {biz.location?.[0] && <span class="biz-tag">{biz.location[0]}</span>}
+                </div>
+              </div>
+            </div>
+            <a href={`/listing/${biz.slug}/`} class="biz-view-link">View Full Listing &rarr;</a>
+          </div>
+
+          <!-- Claim Form -->
+          <form class="claim-form" id="claim-form">
+            <h3>Verification Details</h3>
+            <p class="form-intro">Fill out the form below to start the claim process. We'll verify your ownership and get you set up.</p>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="name">Your Name *</label>
+                <input type="text" id="name" name="name" placeholder="John Smith" required />
+              </div>
+              <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" placeholder="john@example.com" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="phone">Phone Number *</label>
+                <input type="tel" id="phone" name="phone" placeholder="(228) 555-1234" required />
+              </div>
+              <div class="form-group">
+                <label for="role">Your Role *</label>
+                <select id="role" name="role" required>
+                  <option value="">Select your role...</option>
+                  <option value="Owner">Owner</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Authorized Representative">Authorized Representative</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="verification">Preferred Verification Method *</label>
+              <select id="verification" name="verification" required>
+                <option value="">Select a method...</option>
+                <option value="Phone Call">Phone Call</option>
+                <option value="Email to Business Domain">Email to Business Domain</option>
+                <option value="Utility Bill / Document">Utility Bill / Document</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="notes">Additional Notes</label>
+              <textarea id="notes" name="notes" rows="4" placeholder="Any additional details that may help us verify your ownership..."></textarea>
+            </div>
+
+            <input type="hidden" id="business-name" value={biz.title} />
+            <input type="hidden" id="business-slug" value={biz.slug} />
+
+            <button type="submit" class="btn btn-gold btn-lg" id="submit-btn">Submit Claim Request</button>
+            <div class="form-status" id="form-status"></div>
+          </form>
+        </div>
+
+        <aside class="claim-sidebar">
+          <div class="sidebar-card">
+            <h4>How It Works</h4>
+            <div class="steps">
+              <div class="step">
+                <span class="step-num">1</span>
+                <div>
+                  <strong>Submit Your Claim</strong>
+                  <p>Fill out the form with your details and preferred verification method.</p>
+                </div>
+              </div>
+              <div class="step">
+                <span class="step-num">2</span>
+                <div>
+                  <strong>We Verify Ownership</strong>
+                  <p>Our team will contact you to confirm your connection to the business.</p>
+                </div>
+              </div>
+              <div class="step">
+                <span class="step-num">3</span>
+                <div>
+                  <strong>Manage Your Listing</strong>
+                  <p>Once verified, update your info, add photos, and post deals.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-card">
+            <h4>Why Claim Your Listing?</h4>
+            <ul class="benefits">
+              <li>Update your business information</li>
+              <li>Add photos and a detailed description</li>
+              <li>Post coupons and special deals</li>
+              <li>Respond to customer reviews</li>
+              <li>Get a Featured badge with priority placement</li>
+              <li>Connect with local customers</li>
+            </ul>
+          </div>
+
+          <div class="sidebar-card sidebar-contact">
+            <span class="sidebar-contact-icon">💬</span>
+            <strong>Have Questions?</strong>
+            <p>Contact us directly and we'll help you get set up.</p>
+            <a href="/contact/" class="btn btn-outline-sm">Contact Us</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<script>
+  const form = document.getElementById('claim-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const formStatus = document.getElementById('form-status')!;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    formStatus.textContent = '';
+    formStatus.className = 'form-status';
+
+    const data = {
+      name: (document.getElementById('name') as HTMLInputElement).value,
+      email: (document.getElementById('email') as HTMLInputElement).value,
+      phone: (document.getElementById('phone') as HTMLInputElement).value,
+      role: (document.getElementById('role') as HTMLSelectElement).value,
+      verification: (document.getElementById('verification') as HTMLSelectElement).value,
+      notes: (document.getElementById('notes') as HTMLTextAreaElement).value,
+      slug: (document.getElementById('business-slug') as HTMLInputElement).value,
+    };
+
+    try {
+      const res = await fetch('/api/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        formStatus.textContent = 'Claim request submitted! We\'ll be in touch within 1-2 business days to verify your ownership.';
+        formStatus.className = 'form-status success';
+        form.reset();
+      } else {
+        formStatus.textContent = result.error || 'Something went wrong. Please try again.';
+        formStatus.className = 'form-status error';
+      }
+    } catch {
+      formStatus.textContent = 'Network error. Please check your connection and try again.';
+      formStatus.className = 'form-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit Claim Request';
+  });
+</script>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--white);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-hero p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .claim-section {
+    padding: 3rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .claim-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 2.5rem;
+    align-items: flex-start;
+  }
+
+  .claim-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* Business Info Card */
+  .biz-info-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .biz-info-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .biz-info-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,33,55,0.06);
+    border-radius: var(--radius-md);
+  }
+
+  .biz-info-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+
+  .biz-address {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+  }
+
+  .biz-tags {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .biz-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--teal);
+    background: rgba(26,127,122,0.08);
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+  }
+
+  .biz-view-link {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--teal);
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .biz-view-link:hover { color: var(--teal-light); }
+
+  /* Claim Form */
+  .claim-form {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .claim-form h3 {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    color: var(--navy);
+    margin-bottom: 0;
+  }
+
+  .form-intro {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    line-height: 1.6;
+    margin-top: -0.5rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--navy);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--gray-800);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(26,127,122,0.1);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+  }
+
+  .btn-lg { padding: 0.9rem 2.2rem; font-size: 1rem; }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+  }
+
+  .btn-gold:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(232,160,32,0.35);
+  }
+
+  .claim-form .btn { align-self: flex-start; margin-top: 0.25rem; }
+  .claim-form .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .form-status {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0;
+    border-radius: var(--radius-md);
+  }
+
+  .form-status.success {
+    color: var(--teal);
+    background: rgba(26,127,122,0.08);
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(26,127,122,0.2);
+  }
+
+  .form-status.error {
+    color: #c0392b;
+    background: rgba(192,57,43,0.08);
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(192,57,43,0.2);
+  }
+
+  /* Sidebar */
+  .sidebar-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .sidebar-card h4 {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    color: var(--navy);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .step {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--teal);
+    color: var(--white);
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .step strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--navy);
+    margin-bottom: 0.15rem;
+  }
+
+  .step p {
+    font-size: 0.82rem;
+    color: var(--gray-600);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .benefits {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .benefits li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    line-height: 1.4;
+  }
+
+  .benefits li::before {
+    content: '✓';
+    color: var(--teal);
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+
+  .sidebar-contact {
+    text-align: center;
+  }
+
+  .sidebar-contact-icon {
+    font-size: 1.75rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .sidebar-contact strong {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    color: var(--navy);
+    margin-bottom: 0.35rem;
+  }
+
+  .sidebar-contact p {
+    color: var(--gray-600);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0 0 1rem;
+  }
+
+  .btn-outline-sm {
+    display: inline-flex;
+    padding: 0.55rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--teal);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    transition: all 0.25s;
+  }
+
+  .btn-outline-sm:hover {
+    border-color: var(--teal);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 900px) {
+    .claim-layout { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+    .claim-form { padding: 1.5rem; }
+    .biz-info-card { flex-direction: column; align-items: flex-start; }
+  }
+</style>

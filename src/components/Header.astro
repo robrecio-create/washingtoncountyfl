@@ -1,0 +1,174 @@
+---
+import { navLinks } from '../data/constants';
+interface Props {
+  activePage?: string;
+}
+const { activePage = '' } = Astro.props;
+---
+
+<header class="site-header" id="header">
+  <div class="container header-inner">
+    <a href="/" class="logo" aria-label="Jackson County MS Home">
+      <img src="/images/favicon.png" alt="JC MS logo" class="logo-img" width="40" height="40" />
+      <div class="logo-text">
+        <span class="logo-title">Jackson County <strong>MS</strong></span>
+        <span class="logo-sub">CONNECT</span>
+      </div>
+    </a>
+
+    <nav class="nav-desktop" aria-label="Primary">
+      {navLinks.map(link => (
+        <a href={link.href} class={activePage === link.label ? 'nav-active' : ''}>{link.label}</a>
+      ))}
+    </nav>
+
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <nav class="nav-mobile" id="mobile-menu" aria-label="Mobile navigation">
+    {navLinks.map(link => (
+      <a href={link.href} class={activePage === link.label ? 'nav-active' : ''}>{link.label}</a>
+    ))}
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(13, 33, 55, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.3s;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    height: 72px;
+    gap: 2rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .logo-img {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+  }
+
+  .logo-text { display: flex; flex-direction: column; }
+
+  .logo-title {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.15rem;
+    color: var(--white);
+    line-height: 1.2;
+    font-style: italic;
+  }
+
+  .logo-title strong { font-weight: 700; font-style: normal; }
+
+  .logo-sub {
+    font-size: 0.65rem;
+    color: var(--gold);
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .nav-desktop {
+    display: flex;
+    gap: 1.75rem;
+    margin-left: auto;
+  }
+
+  .nav-desktop a {
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+    font-size: 0.88rem;
+    letter-spacing: 0.3px;
+    transition: color 0.2s;
+  }
+
+  .nav-desktop a:hover { color: var(--white); }
+  .nav-desktop a.nav-active { color: var(--gold); }
+
+  .nav-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    padding: 8px;
+    margin-left: auto;
+  }
+
+  .nav-toggle span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--white);
+    border-radius: 2px;
+    transition: 0.3s;
+  }
+
+  .nav-mobile {
+    display: none;
+    flex-direction: column;
+    padding: 1rem var(--gutter) 1.5rem;
+    background: var(--navy);
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .nav-mobile a {
+    color: rgba(255,255,255,0.85);
+    padding: 0.75rem 0;
+    font-weight: 600;
+    font-size: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .nav-mobile a:hover { color: var(--gold); }
+  .nav-mobile a.nav-active { color: var(--gold); }
+
+  @media (max-width: 768px) {
+    .nav-desktop { display: none; }
+    .nav-toggle { display: flex; }
+    .nav-mobile.open { display: flex; }
+  }
+</style>
+
+<script>
+  const toggle = document.querySelector('.nav-toggle');
+  const menu = document.getElementById('mobile-menu');
+
+  toggle?.addEventListener('click', () => {
+    const open = menu?.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+  });
+
+  menu?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      menu.classList.remove('open');
+      toggle?.setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  const header = document.getElementById('header');
+  window.addEventListener('scroll', () => {
+    header?.classList.toggle('scrolled', window.scrollY > 80);
+  }, { passive: true });
+</script>

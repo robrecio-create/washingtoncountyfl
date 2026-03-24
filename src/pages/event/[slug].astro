@@ -1,0 +1,323 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import eventsData from '../../data/events.json';
+
+export function getStaticPaths() {
+  const events = (eventsData as any[]).filter(e => e.status === 'publish');
+  return events.map(event => ({ params: { slug: event.slug }, props: { event } }));
+}
+
+const { event } = Astro.props;
+
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+const rawEventDesc = event.content || '';
+const eventSeoDesc = rawEventDesc.length > 155
+  ? rawEventDesc.slice(0, 152).trimEnd() + '...'
+  : rawEventDesc || `${event.title} — ${formatDate(event.date)} at ${event.venue} in ${event.location || 'Jackson County'}, MS.`;
+---
+
+<Layout
+  title={`${event.title} — Jackson County MS Events`}
+  description={eventSeoDesc}
+>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": event.title,
+    "description": eventSeoDesc,
+    "startDate": event.start_time ? `${event.date}T${event.start_time}` : event.date,
+    "endDate": event.end_time ? `${event.date}T${event.end_time}` : undefined,
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "location": {
+      "@type": "Place",
+      "name": event.venue,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": event.address || event.venue,
+        "addressLocality": event.location || "Jackson County",
+        "addressRegion": "MS",
+        "addressCountry": "US"
+      }
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": "JacksonCountyMS.com",
+      "url": "https://www.jacksoncountyms.com"
+    },
+    "offers": event.cost ? {
+      "@type": "Offer",
+      "price": event.cost === "Free" ? "0" : event.cost,
+      "priceCurrency": "USD"
+    } : undefined,
+    "url": `https://www.jacksoncountyms.com/event/${event.slug}/`
+  })} />
+
+  <Header activePage="Events" />
+
+  <section class="page-hero">
+    <div class="container">
+      <a href="/events/" class="back-link">&larr; All Events</a>
+      <h1>{event.title}</h1>
+      <p class="event-date-hero">{formatDate(event.date)}</p>
+    </div>
+  </section>
+
+  <section class="event-detail">
+    <div class="container">
+      <div class="event-grid">
+        <div class="event-content">
+          <h2>About This Event</h2>
+          <p>{event.content}</p>
+
+          {event.tags && event.tags.length > 0 && (
+            <div class="event-tags">
+              {event.tags.map((tag: string) => (
+                <span class="tag">{tag}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <aside class="event-sidebar">
+          <div class="sidebar-card">
+            <h3>Event Details</h3>
+
+            <div class="detail-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <div>
+                <strong>Date</strong>
+                <p>{formatDate(event.date)}</p>
+              </div>
+            </div>
+
+            <div class="detail-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div>
+                <strong>Time</strong>
+                <p>{event.start_time}{event.end_time ? ` – ${event.end_time}` : ''}</p>
+              </div>
+            </div>
+
+            {event.recurring && (
+              <div class="detail-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                <div>
+                  <strong>Recurring</strong>
+                  <p>{event.recurring}</p>
+                </div>
+              </div>
+            )}
+
+            <div class="detail-row">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <div>
+                <strong>Venue</strong>
+                <p>{event.venue}</p>
+                {event.address && <p class="detail-sub">{event.address}</p>}
+              </div>
+            </div>
+
+            {event.cost && (
+              <div class="detail-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <div>
+                  <strong>Cost</strong>
+                  <p>{event.cost}</p>
+                </div>
+              </div>
+            )}
+
+            {event.phone && (
+              <div class="detail-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                <div>
+                  <strong>Phone</strong>
+                  <p><a href={`tel:${event.phone}`}>{event.phone}</a></p>
+                </div>
+              </div>
+            )}
+
+            {event.website && (
+              <a href={event.website} target="_blank" rel="noopener noreferrer" class="btn btn-teal">
+                Visit Website &rarr;
+              </a>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <Footer />
+</Layout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 8rem 0 3.5rem;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--gold);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+
+  .back-link:hover { opacity: 0.8; }
+
+  .page-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: var(--white);
+    margin-bottom: 0.5rem;
+  }
+
+  .event-date-hero {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+  }
+
+  .event-detail {
+    padding: 3.5rem 0 5rem;
+    background: var(--gray-100);
+  }
+
+  .event-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .event-content h2 {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: var(--navy);
+    margin-bottom: 1rem;
+  }
+
+  .event-content p {
+    font-size: 1rem;
+    color: var(--gray-700);
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+  }
+
+  .event-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--teal);
+    background: rgba(0,128,128,0.08);
+    padding: 0.3rem 0.8rem;
+    border-radius: 100px;
+  }
+
+  .sidebar-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: 1.75rem;
+  }
+
+  .sidebar-card h3 {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    color: var(--navy);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .detail-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .detail-row svg {
+    color: var(--teal);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .detail-row strong {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gray-400);
+    margin-bottom: 0.15rem;
+  }
+
+  .detail-row p {
+    font-size: 0.9rem;
+    color: var(--navy);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .detail-row a {
+    color: var(--teal);
+    text-decoration: none;
+  }
+
+  .detail-row a:hover { text-decoration: underline; }
+
+  .detail-sub {
+    font-size: 0.8rem !important;
+    color: var(--gray-500) !important;
+    margin-top: 0.15rem !important;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.7rem 1.6rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all 0.25s;
+    text-decoration: none;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+
+  .btn-teal {
+    background: var(--teal);
+    color: var(--white);
+    border-color: var(--teal);
+  }
+
+  .btn-teal:hover {
+    background: var(--teal-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,128,128,0.3);
+  }
+
+  @media (max-width: 800px) {
+    .event-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
