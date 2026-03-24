@@ -110,11 +110,11 @@ const hasGallery = photos.length > 0 || !!videoEmbedUrl;
 const rawVanityDesc = biz.excerpt || biz.content || '';
 const vanitySeoDec = rawVanityDesc.length > 155
   ? rawVanityDesc.slice(0, 152).trimEnd() + '...'
-  : rawVanityDesc || `${biz.title} is a local business in ${biz.location?.[0] || 'Jackson County'}, Mississippi. Find contact info, hours, and more.`;
+  : rawVanityDesc || `${biz.title} is a local business in ${biz.location?.[0] || 'Washington County'}, Florida. Find contact info, hours, and more.`;
 ---
 
 <Layout
-  title={`${biz.title} — Jackson County MS`}
+  title={`${biz.title} — Washington County MS`}
   description={vanitySeoDec}
   ogImage={primaryPhoto?.url || undefined}
 >
@@ -126,7 +126,7 @@ const vanitySeoDec = rawVanityDesc.length > 155
     "address": biz.address ? {
       "@type": "PostalAddress",
       "streetAddress": biz.address,
-      "addressLocality": biz.location?.[0] || "Jackson County",
+      "addressLocality": biz.location?.[0] || "Washington County",
       "addressRegion": "MS",
       "addressCountry": "US"
     } : undefined,

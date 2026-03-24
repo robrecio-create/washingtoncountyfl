@@ -19,11 +19,11 @@ function formatDate(dateStr: string) {
 const rawEventDesc = event.content || '';
 const eventSeoDesc = rawEventDesc.length > 155
   ? rawEventDesc.slice(0, 152).trimEnd() + '...'
-  : rawEventDesc || `${event.title} — ${formatDate(event.date)} at ${event.venue} in ${event.location || 'Jackson County'}, MS.`;
+  : rawEventDesc || `${event.title} — ${formatDate(event.date)} at ${event.venue} in ${event.location || 'Washington County'}, MS.`;
 ---
 
 <Layout
-  title={`${event.title} — Jackson County MS Events`}
+  title={`${event.title} — Washington County MS Events`}
   description={eventSeoDesc}
 >
   <script type="application/ld+json" slot="head" set:html={JSON.stringify({
@@ -41,7 +41,7 @@ const eventSeoDesc = rawEventDesc.length > 155
       "address": {
         "@type": "PostalAddress",
         "streetAddress": event.address || event.venue,
-        "addressLocality": event.location || "Jackson County",
+        "addressLocality": event.location || "Washington County",
         "addressRegion": "MS",
         "addressCountry": "US"
       }
